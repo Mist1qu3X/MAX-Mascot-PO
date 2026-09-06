@@ -1,0 +1,179 @@
+/**
+ * Локальный сервер панели: раздаёт страницу стикера и картинки маскотов.
+ *
+ * Зачем он вообще. Посетителю нужна веб-страница с кнопкой «Сохранить» —
+ * значит, телефон должен куда-то сходить. Вместо внешнего хостинга страницу
+ * раздаёт сама панель по локальной сети: телефон и панель в одном Wi-Fi.
+ *
+ * Что это даёт сверх «просто заменили хостинг»:
+ *   - картинка лежит на панели, а не на kie.ai — ссылки не протухают
+ *     через трое суток и не зависят от того, какой из двух хостов kie.ai
+ *     выдал результат в этот раз;
+ *   - страница и картинка на одном origin, поэтому CORS вообще не при чём
+ *     и кнопка «Сохранить» работает всегда;
+ *   - картинку с kie.ai скачивает Node, а не браузер, — на CORS ему всё равно.
+ *
+ * Два режима.
+ *   Локально  — адрес страницы собирается из IP панели в домашней сети.
+ *               Телефон обязан быть в том же Wi-Fi.
+ *   На хостинге — задайте PUBLIC_URL, и адрес берётся из домена. Тогда
+ *               телефон доходит и по мобильному интернету.
+ *
+ * Переменные:
+ *   PORT        порт, по умолчанию 8787
+ *   PUBLIC_URL  публичный адрес, например https://sticker.example.ru
+ *   SHOT_TOKEN  пароль для POST /shot. На публичном хостинге обязателен:
+ *               без него любой желающий заставит сервер качать что угодно
+ *               и забьёт ему память.
+ */
+import { createServer } from 'node:http'
+import { readFile } from 'node:fs/promises'
+import { networkInterfaces } from 'node:os'
+import { fileURLToPath } from 'node:url'
+import { dirname, join } from 'node:path'
+import { randomUUID } from 'node:crypto'
+
+const PORT = Number(process.env.PORT ?? 8787)
+/** Задан — значит сервер публичный и адреса строим от домена, а не от IP. */
+const PUBLIC_URL = (process.env.PUBLIC_URL ?? '').replace(/\/+$/, '')
+const SHOT_TOKEN = process.env.SHOT_TOKEN ?? ''
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
+const PAGE = join(ROOT, 'sticker', 'index.html')
+
+/**
+ * Сколько маскотов держим. Локально сессия длится минуту и хватает 24;
+ * на хостинге панелей может быть несколько, поэтому запас больше.
+ */
+const KEEP = Number(process.env.KEEP ?? (PUBLIC_URL ? 200 : 24))
+/** id -> { body, type, ext }. В памяти: панель перезапускается, чистить нечего. */
+const shots = new Map()
+
+/** Расширение по типу: модель отдаёт то jpg, то png, зависит от настройки. */
+const EXT = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' }
+
+/** Домашние сети: 10/8, 172.16/12, 192.168/16. Только сюда попадёт телефон. */
+function isLan(ip) {
+  const [a, b] = ip.split('.').map(Number)
+  return a === 10 || a === 192 && b === 168 || a === 172 && b >= 16 && b <= 31
+}
+
+/**
+ * Адрес панели в локальной сети — его увидит телефон.
+ *
+ * Просто «первый непетлевой IPv4» брать нельзя: VPN и всякие служебные
+ * туннели тоже непетлевые, а до них с телефона не достучаться. Поэтому
+ * отсеиваем туннельные интерфейсы по имени и берём только адрес из
+ * домашнего диапазона. Порядок интерфейсов системой не гарантирован,
+ * так что полагаться на него нельзя.
+ */
+function lanHost() {
+  const skip = /^(utun|tun|tap|ppp|awdl|llw|ipsec)/
+  for (const [name, list] of Object.entries(networkInterfaces())) {
+    if (skip.test(name)) continue
+    for (const net of list ?? []) {
+      if (net.family === 'IPv4' && !net.internal && isLan(net.address)) return net.address
+    }
+  }
+  return null
+}
+
+/** Откуда телефон возьмёт страницу: домен на хостинге или IP в локальной сети. */
+function publicOrigin() {
+  if (PUBLIC_URL) return PUBLIC_URL
+  const host = lanHost()
+  return host ? `http://${host}:${PORT}` : null
+}
+
+function send(res, status, body, headers = {}) {
+  res.writeHead(status, { 'access-control-allow-origin': '*', ...headers })
+  res.end(body)
+}
+
+/** Забираем картинку себе. Node ходит на kie.ai без оглядки на CORS. */
+async function keep(url) {
+  const response = await fetch(url)
+  if (!response.ok) throw new Error(`HTTP ${response.status}`)
+  const body = Buffer.from(await response.arrayBuffer())
+  const type = (response.headers.get('content-type') ?? 'image/jpeg').split(';')[0]
+  const id = randomUUID().slice(0, 8)
+
+  shots.set(id, { body, type, ext: EXT[type] ?? 'jpg' })
+  while (shots.size > KEEP) shots.delete(shots.keys().next().value)
+  return id
+}
+
+const server = createServer(async (req, res) => {
+  const url = new URL(req.url, 'http://localhost')
+
+  if (req.method === 'OPTIONS') {
+    return send(res, 204, '', {
+      'access-control-allow-methods': 'GET,POST,OPTIONS',
+      'access-control-allow-headers': 'content-type,authorization',
+    })
+  }
+
+  // Панель отдаёт ссылку на свежий результат, получает адрес для QR.
+  if (req.method === 'POST' && url.pathname === '/shot') {
+    if (SHOT_TOKEN && req.headers.authorization !== `Bearer ${SHOT_TOKEN}`) {
+      return send(res, 401, JSON.stringify({ error: 'нужен токен' }), { 'content-type': 'application/json' })
+    }
+    try {
+      const chunks = []
+      for await (const chunk of req) chunks.push(chunk)
+      const { url: source } = JSON.parse(Buffer.concat(chunks).toString())
+      if (!source) return send(res, 400, JSON.stringify({ error: 'нет url' }))
+
+      const id = await keep(source)
+      const file = `/i/${id}.${shots.get(id).ext}`
+      const origin = publicOrigin()
+      send(res, 200, JSON.stringify({
+        id,
+        // Адрес для QR. Некуда вести — отдаём null, и панель уходит на
+        // запасной вариант: QR прямо на картинку у kie.ai.
+        page: origin ? `${origin}/?i=${file}` : null,
+        image: file,
+      }), { 'content-type': 'application/json' })
+    } catch (error) {
+      send(res, 502, JSON.stringify({ error: String(error) }), { 'content-type': 'application/json' })
+    }
+    return
+  }
+
+  // Проверка живости — для Dokploy и любого монитора.
+  if (req.method === 'GET' && url.pathname === '/health') {
+    return send(res, 200, JSON.stringify({ ok: true, shots: shots.size }),
+      { 'content-type': 'application/json' })
+  }
+
+  if (req.method === 'GET' && url.pathname.startsWith('/i/')) {
+    const shot = shots.get(url.pathname.slice(3).replace(/\.[a-z0-9]+$/i, ''))
+    if (!shot) return send(res, 404, 'нет такой картинки')
+    // inline, а не attachment: если посетитель дойдёт до картинки напрямую,
+    // она должна открыться, а не скачаться файлом.
+    return send(res, 200, shot.body, {
+      'content-type': shot.type,
+      'content-disposition': 'inline',
+      'cache-control': 'public, max-age=3600',
+    })
+  }
+
+  if (req.method === 'GET' && (url.pathname === '/' || url.pathname === '/index.html')) {
+    try {
+      return send(res, 200, await readFile(PAGE), { 'content-type': 'text/html; charset=utf-8' })
+    } catch {
+      return send(res, 500, 'страница не найдена: ' + PAGE)
+    }
+  }
+
+  send(res, 404, 'не найдено')
+})
+
+server.listen(PORT, '0.0.0.0', () => {
+  const origin = publicOrigin()
+  console.log(`Страница стикера: ${origin ?? `http://localhost:${PORT}`}`)
+  if (!origin) console.log('Сети не видно — телефон до панели не достучится.')
+  if (PUBLIC_URL && !SHOT_TOKEN) {
+    console.log('ВНИМАНИЕ: PUBLIC_URL задан, а SHOT_TOKEN — нет.')
+    console.log('POST /shot открыт всему интернету: любой заставит сервер качать что угодно.')
+  }
+})

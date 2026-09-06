@@ -1,0 +1,20 @@
+node_modules
+dist
+dist-neu
+.DS_Store
+*.local
+*.tsbuildinfo
+.env
+.env.local
+.env.*.local
+
+# --- Что уезжает в репозиторий Max-sticker -------------------------------
+# Репозиторий нужен Dokploy, чтобы собрать образ по Dockerfile, а тому нужны
+# ровно две папки: server/ и sticker/. Панель (src/, assets/, avatar/)
+# остаётся локальной — 140 МБ макетов ради 20 КБ сервера класть незачем.
+/*
+!/.gitignore
+!/Dockerfile
+!/.dockerignore
+!/server/
+!/sticker/

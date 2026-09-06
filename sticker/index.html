@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ваш маскот — MAX</title>
+<style>
+  :root{
+    --void:#0d001a; --ink:#fff; --muted:rgb(255 255 255/.62);
+    --brand:linear-gradient(90deg,#a22bdf 0%,#7a36ff 25%,#547eff 50%,#30c4ff 75%,#27b2ff 100%);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--void);color:var(--ink);
+    font-family:'VK Sans Display',-apple-system,'Helvetica Neue',sans-serif;
+    -webkit-font-smoothing:antialiased}
+  body{padding:24px 20px 48px;max-width:560px;margin-inline:auto;
+    background:
+      radial-gradient(ellipse 90% 46% at 20% -6%, rgb(40 139 255/.55) 0%, rgb(40 139 255/0) 70%),
+      radial-gradient(ellipse 80% 44% at 86% -4%, rgb(155 7 255/.6) 0%, rgb(155 7 255/0) 70%),
+      var(--void);
+    background-attachment:fixed}
+  h1{font-size:34px;line-height:1.1;margin:20px 0 8px;font-weight:800}
+  h1 b{background:var(--brand);-webkit-background-clip:text;background-clip:text;color:transparent;font-weight:800}
+  .lead{color:var(--muted);font-size:17px;line-height:1.45;margin:0 0 22px}
+  .card{position:relative;border-radius:26px;padding:8px;
+    background:linear-gradient(180deg,#8f02ff 0%,#1a87ff 100%);margin-bottom:20px}
+  .inner{border-radius:19px;background:#120a22;overflow:hidden;aspect-ratio:1;
+    display:flex;align-items:center;justify-content:center}
+  .inner img{width:100%;height:100%;object-fit:contain;display:block}
+  .spin{width:38px;height:38px;border:4px solid rgb(255 255 255/.18);border-top-color:#7a36ff;
+    border-radius:50%;animation:r 900ms linear infinite}
+  @keyframes r{to{transform:rotate(360deg)}}
+  .btn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;
+    padding:18px 20px;border:0;border-radius:999px;font:inherit;font-size:19px;font-weight:600;
+    color:#fff;cursor:pointer;text-decoration:none;margin-bottom:12px}
+  .primary{background:var(--brand)}
+  .ghost{background:rgb(255 255 255/.09);border:1px solid rgb(255 255 255/.16)}
+  .btn:disabled{opacity:.45}
+  .hint{color:var(--muted);font-size:14px;line-height:1.45;margin:0 0 28px;text-align:center}
+  ol{margin:0;padding:0;list-style:none;counter-reset:s}
+  li{counter-increment:s;position:relative;padding:0 0 22px 52px;color:var(--muted);
+    font-size:16px;line-height:1.45}
+  li::before{content:counter(s);position:absolute;left:0;top:-3px;width:34px;height:34px;
+    border-radius:50%;background:rgb(255 255 255/.09);border:1px solid rgb(255 255 255/.16);
+    display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:#fff}
+  li b{color:#fff;font-weight:600}
+  h2{font-size:22px;margin:8px 0 20px;font-weight:700}
+  .note{border-left:3px solid #7a36ff;padding:2px 0 2px 14px;margin:4px 0 26px;
+    color:var(--muted);font-size:14px;line-height:1.45}
+  .err{padding:18px;border-radius:16px;background:rgb(255 90 90/.12);
+    border:1px solid rgb(255 90 90/.3);color:#ffb3b3;font-size:15px;line-height:1.4}
+</style>
+</head>
+<body>
+
+<h1>Ваш <b>цифровой маскот</b></h1>
+<p class="lead">Сохраните картинку и добавьте её стикером в MAX — это пара минут.</p>
+
+<div class="card"><div class="inner" id="frame"><div class="spin"></div></div></div>
+
+<button class="btn primary" id="save" disabled>Сохранить картинку</button>
+<a class="btn ghost" id="bot" href="https://max.ru/stickers" target="_blank" rel="noopener">Открыть бот «Стикеры в MAX»</a>
+<p class="hint" id="hint">Если кнопка не сработала — задержите палец на картинке и выберите «Сохранить в Фото».</p>
+
+<h2>Как сделать стикер</h2>
+<ol>
+  <li><b>Сохраните картинку</b> кнопкой выше — она попадёт в галерею телефона.</li>
+  <li><b>Откройте бот</b> кнопкой «Открыть бот» выше. Или найдите в поиске MAX
+      <b>«Стикеры в MAX»</b> — у официального стоит синяя галочка.</li>
+  <li>Нажмите <b>«Начать»</b>, затем <b>«Создать набор»</b> и придумайте название.</li>
+  <li><b>Загрузите сохранённую картинку</b> из галереи и отправьте набор на проверку.</li>
+  <li>Готово — набор появится у вас в стикерах, им можно делиться.</li>
+</ol>
+
+<p class="note">Картинка уже подходит боту по формату и размеру, дорабатывать её не нужно. Ссылка временная и живёт только пока вы рядом с панелью — сохраните сейчас.</p>
+
+<script>
+(function () {
+  const q = new URLSearchParams(location.search)
+  const src = q.get('i')
+  const frame = document.getElementById('frame')
+  const save = document.getElementById('save')
+  const hint = document.getElementById('hint')
+  const bot = document.getElementById('bot')
+  if (q.get('bot')) bot.href = q.get('bot')
+
+  if (!src) {
+    frame.innerHTML = '<div class="err">Ссылка неполная — отсканируйте QR-код с экрана ещё раз.</div>'
+    return
+  }
+
+  // Без crossOrigin: kie.ai отдаёт результат с двух разных хостов, и на одном
+  // из них нет CORS-заголовков — с этим атрибутом картинка там просто не грузится.
+  // Пиксели мы не читаем, атрибут не нужен.
+  const img = new Image()
+  img.alt = 'Ваш маскот'
+  img.onload = () => { frame.replaceChildren(img); save.disabled = false }
+  img.onerror = () => {
+    frame.innerHTML = '<div class="err">Картинка недоступна — возможно, срок ссылки истёк.</div>'
+  }
+  img.src = src
+
+  // Расширение берём из типа: панель отдаёт jpg, но настройкой можно вернуть png.
+  const EXT = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' }
+  const nameFor = (type) => 'max-mascot.' + (EXT[type] || 'jpg')
+
+  async function blob() {
+    const r = await fetch(src, { mode: 'cors' })
+    if (!r.ok) throw new Error('HTTP ' + r.status)
+    return r.blob()
+  }
+
+  save.addEventListener('click', async () => {
+    save.disabled = true
+    const was = save.textContent
+    save.textContent = 'Готовим…'
+    try {
+      const b = await blob()
+      const type = b.type || 'image/jpeg'
+      const file = new File([b], nameFor(type), { type })
+
+      // На айфоне это единственный надёжный способ положить картинку в «Фото».
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file] })
+        hint.textContent = 'В меню выберите «Сохранить изображение».'
+      } else {
+        const url = URL.createObjectURL(b)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = nameFor(b.type)
+        document.body.appendChild(a)
+        a.click()
+        a.remove()
+        setTimeout(() => URL.revokeObjectURL(url), 10_000)
+        hint.textContent = 'Картинка сохранена в загрузки телефона.'
+      }
+    } catch (e) {
+      if (e && e.name === 'AbortError') {
+        // пользователь закрыл меню — это не ошибка
+      } else {
+        // Сюда попадаем, когда хост картинки не отдаёт CORS и fetch запрещён.
+        // Открываем картинку отдельной вкладкой: там её сохраняют долгим нажатием.
+        window.open(src, '_blank', 'noopener')
+        hint.textContent = 'Картинка открылась в новой вкладке — задержите на ней палец и выберите «Сохранить в Фото».'
+      }
+    } finally {
+      save.textContent = was
+      save.disabled = false
+    }
+  })
+})()
+</script>
+</body>
+</html>
