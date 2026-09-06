@@ -45,11 +45,14 @@ const PAGE = join(ROOT, 'sticker', 'index.html')
  * на хостинге панелей может быть несколько, поэтому запас больше.
  */
 const KEEP = Number(process.env.KEEP ?? (PUBLIC_URL ? 200 : 24))
-/** id -> { body, type, ext }. В памяти: панель перезапускается, чистить нечего. */
+/**
+ * id -> { pending }, где pending — обещание с телом и типом картинки.
+ * Храним именно обещание, а не готовые байты: /shot обязан отвечать сразу,
+ * иначе QR появляется на экране панели через 10–15 секунд после самого
+ * маскота. Скачивание идёт фоном, а запрос картинки его дожидается.
+ * В памяти: панель перезапускается, чистить нечего.
+ */
 const shots = new Map()
-
-/** Расширение по типу: модель отдаёт то jpg, то png, зависит от настройки. */
-const EXT = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' }
 
 /** Домашние сети: 10/8, 172.16/12, 192.168/16. Только сюда попадёт телефон. */
 function isLan(ip) {
@@ -89,15 +92,26 @@ function send(res, status, body, headers = {}) {
   res.end(body)
 }
 
-/** Забираем картинку себе. Node ходит на kie.ai без оглядки на CORS. */
-async function keep(url) {
-  const response = await fetch(url)
-  if (!response.ok) throw new Error(`HTTP ${response.status}`)
-  const body = Buffer.from(await response.arrayBuffer())
-  const type = (response.headers.get('content-type') ?? 'image/jpeg').split(';')[0]
+/**
+ * Заводим место под картинку и сразу отдаём id — качаем фоном.
+ * Node ходит на kie.ai без оглядки на CORS.
+ */
+function keep(url) {
   const id = randomUUID().slice(0, 8)
 
-  shots.set(id, { body, type, ext: EXT[type] ?? 'jpg' })
+  const pending = (async () => {
+    const response = await fetch(url)
+    if (!response.ok) throw new Error(`HTTP ${response.status}`)
+    return {
+      body: Buffer.from(await response.arrayBuffer()),
+      type: (response.headers.get('content-type') ?? 'image/jpeg').split(';')[0],
+    }
+  })()
+  // Ошибку разберём при запросе картинки; здесь глушим, чтобы Node не ругался
+  // на необработанное отклонение и не валил процесс.
+  pending.catch(() => {})
+
+  shots.set(id, { pending })
   while (shots.size > KEEP) shots.delete(shots.keys().next().value)
   return id
 }
@@ -123,8 +137,10 @@ const server = createServer(async (req, res) => {
       const { url: source } = JSON.parse(Buffer.concat(chunks).toString())
       if (!source) return send(res, 400, JSON.stringify({ error: 'нет url' }))
 
-      const id = await keep(source)
-      const file = `/i/${id}.${shots.get(id).ext}`
+      // Расширения в адресе нет намеренно: тип узнаётся только после
+      // скачивания, а ответ нужен раньше. Тип отдаём заголовком.
+      const id = keep(source)
+      const file = `/i/${id}`
       const origin = publicOrigin()
       send(res, 200, JSON.stringify({
         id,
@@ -146,12 +162,23 @@ const server = createServer(async (req, res) => {
   }
 
   if (req.method === 'GET' && url.pathname.startsWith('/i/')) {
+    // Расширение в адресе не обязательно, но и не мешает — отрезаем.
     const shot = shots.get(url.pathname.slice(3).replace(/\.[a-z0-9]+$/i, ''))
     if (!shot) return send(res, 404, 'нет такой картинки')
+
+    // Посетитель мог отсканировать код раньше, чем мы докачали картинку —
+    // тогда просто ждём здесь, а не отвечаем ошибкой.
+    let body, type
+    try {
+      ({ body, type } = await shot.pending)
+    } catch (error) {
+      return send(res, 502, 'картинку скачать не удалось: ' + String(error))
+    }
+
     // inline, а не attachment: если посетитель дойдёт до картинки напрямую,
     // она должна открыться, а не скачаться файлом.
-    return send(res, 200, shot.body, {
-      'content-type': shot.type,
+    return send(res, 200, body, {
+      'content-type': type,
       'content-disposition': 'inline',
       'cache-control': 'public, max-age=3600',
     })
