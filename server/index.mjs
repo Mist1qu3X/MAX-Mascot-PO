@@ -41,10 +41,15 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 const PAGE = join(ROOT, 'sticker', 'index.html')
 
 /**
- * Сколько маскотов держим. Локально сессия длится минуту и хватает 24;
- * на хостинге панелей может быть несколько, поэтому запас больше.
+ * Сколько памяти отдаём под картинки. Считать штуками оказалось плохо:
+ * маскот весит 1.3 МБ в jpg, но после вырезания фона это png на ~3 МБ,
+ * и две сотни таких — уже под 600 МБ. На небольшом VPS это верный OOM.
+ * Поэтому предел в байтах, а счётчик штук остаётся вторым ограничителем.
  */
+const BUDGET_BYTES = Number(process.env.BUDGET_MB ?? 150) * 1024 * 1024
 const KEEP = Number(process.env.KEEP ?? (PUBLIC_URL ? 200 : 24))
+/** Сколько байт сейчас занято — пересчитывать Map на каждый запрос дорого. */
+let held = 0
 /**
  * id -> { pending }, где pending — обещание с телом и типом картинки.
  * Храним именно обещание, а не готовые байты: /shot обязан отвечать сразу,
@@ -97,23 +102,46 @@ function send(res, status, body, headers = {}) {
  * Node ходит на kie.ai без оглядки на CORS.
  */
 function keep(url) {
-  const id = randomUUID().slice(0, 8)
+  // 12 символов, а не 8: это фотографии живых людей, и хотя перебрать
+  // 32 бита ради чужого маскота никто не станет, лишние 16 бит бесплатны —
+  // на плотность QR четыре знака не влияют.
+  const id = randomUUID().replace(/-/g, '').slice(0, 12)
 
-  const pending = (async () => {
+  const entry = { size: 0 }
+  entry.pending = (async () => {
     const response = await fetch(url)
     if (!response.ok) throw new Error(`HTTP ${response.status}`)
-    return {
-      body: Buffer.from(await response.arrayBuffer()),
-      type: (response.headers.get('content-type') ?? 'image/jpeg').split(';')[0],
-    }
+    const body = Buffer.from(await response.arrayBuffer())
+    // Вес записываем в саму запись, чтобы вытеснение могло вычесть его
+    // синхронно. Раньше вычитание шло через .then, held внутри цикла не
+    // менялся, и while выгребал Map до дна вместе со свежей картинкой.
+    entry.size = body.length
+    held += body.length
+    evict()
+    return { body, type: (response.headers.get('content-type') ?? 'image/jpeg').split(';')[0] }
   })()
   // Ошибку разберём при запросе картинки; здесь глушим, чтобы Node не ругался
   // на необработанное отклонение и не валил процесс.
-  pending.catch(() => {})
+  entry.pending.catch(() => {})
 
-  shots.set(id, { pending })
-  while (shots.size > KEEP) shots.delete(shots.keys().next().value)
+  shots.set(id, entry)
+  evict()
   return id
+}
+
+/**
+ * Выбрасываем самые старые, пока не уложимся в оба предела.
+ * Map хранит порядок вставки, поэтому первый ключ — самый давний.
+ */
+function evict() {
+  // Последнюю запись не трогаем: даже если одна картинка не влезает в
+  // бюджет целиком, выбрасывать её сразу после создания бессмысленно.
+  while (shots.size > 1 && (shots.size > KEEP || held > BUDGET_BYTES)) {
+    const oldest = shots.keys().next().value
+    const shot = shots.get(oldest)
+    shots.delete(oldest)
+    held -= shot?.size ?? 0
+  }
 }
 
 const server = createServer(async (req, res) => {
@@ -157,7 +185,12 @@ const server = createServer(async (req, res) => {
 
   // Проверка живости — для Dokploy и любого монитора.
   if (req.method === 'GET' && url.pathname === '/health') {
-    return send(res, 200, JSON.stringify({ ok: true, shots: shots.size }),
+    return send(res, 200, JSON.stringify({
+      ok: true,
+      shots: shots.size,
+      heldMb: Math.round(held / 1024 / 1024),
+      budgetMb: Math.round(BUDGET_BYTES / 1024 / 1024),
+    }),
       { 'content-type': 'application/json' })
   }
 
