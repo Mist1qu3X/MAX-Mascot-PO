@@ -180,7 +180,7 @@ const server = createServer(async (req, res) => {
   if (req.method === 'OPTIONS') {
     return send(res, 204, '', {
       'access-control-allow-methods': 'GET,POST,OPTIONS',
-      'access-control-allow-headers': 'content-type,authorization',
+      'access-control-allow-headers': 'content-type,authorization,x-kie-key',
     })
   }
 
@@ -261,6 +261,43 @@ const server = createServer(async (req, res) => {
         { 'content-type': 'application/json' })
     } catch (error) {
       send(res, 400, JSON.stringify({ error: String(error) }), { 'content-type': 'application/json' })
+    }
+    return
+  }
+
+  /**
+   * Прокси к API kie.ai: панель зовёт нас, наружу ходим мы.
+   *
+   * Зачем. Из трёх доменов kie.ai два с панели недоступны — хранилище кадров
+   * и хост результатов; их обход уже сделан. Оставался третий, сам API: пока
+   * он открыт, всё работает, а закроют — встанет всё и делать будет нечего.
+   * С этим маршрутом у панели наружу остаётся ровно один адрес: наш домен.
+   *
+   * Ключ kie.ai сервер не хранит и не подставляет — панель присылает его
+   * в `x-kie-key`. Иначе эндпоинт стал бы бесплатным генератором картинок
+   * для всякого, кто узнает адрес.
+   */
+  if (url.pathname.startsWith('/kie/')) {
+    if (SHOT_TOKEN && req.headers.authorization !== `Bearer ${SHOT_TOKEN}`) {
+      return send(res, 401, JSON.stringify({ error: 'нужен токен' }), { 'content-type': 'application/json' })
+    }
+    try {
+      const chunks = []
+      for await (const chunk of req) chunks.push(chunk)
+
+      const upstream = await fetch(`https://api.kie.ai/${url.pathname.slice(5)}${url.search}`, {
+        method: req.method,
+        headers: {
+          'content-type': 'application/json',
+          ...(req.headers['x-kie-key'] ? { authorization: `Bearer ${req.headers['x-kie-key']}` } : {}),
+        },
+        body: chunks.length ? Buffer.concat(chunks) : undefined,
+      })
+
+      send(res, upstream.status, Buffer.from(await upstream.arrayBuffer()),
+        { 'content-type': upstream.headers.get('content-type') ?? 'application/json' })
+    } catch (error) {
+      send(res, 502, JSON.stringify({ error: String(error) }), { 'content-type': 'application/json' })
     }
     return
   }
