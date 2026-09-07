@@ -127,8 +127,20 @@ function keep(url) {
 
   const entry = { size: 0 }
   entry.pending = (async () => {
-    const response = await fetch(url)
-    if (!response.ok) throw new Error(`HTTP ${response.status}`)
+    // Три попытки с паузой: один сетевой сбой не должен ронять картинку
+    // навсегда. Без этого запись «отравлялась» — на панели оставалась
+    // пустая рамка, и починить это можно было только новой генерацией.
+    let response
+    for (let attempt = 0; ; attempt++) {
+      try {
+        response = await fetch(url)
+        if (response.ok) break
+        throw new Error(`HTTP ${response.status}`)
+      } catch (error) {
+        if (attempt >= 2) throw error
+        await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)))
+      }
+    }
     const body = Buffer.from(await response.arrayBuffer())
     // Вес записываем в саму запись, чтобы вытеснение могло вычесть его
     // синхронно. Раньше вычитание шло через .then, held внутри цикла не
