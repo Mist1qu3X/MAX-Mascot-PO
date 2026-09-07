@@ -1,5 +1,7 @@
 node_modules
 dist
+web
+bin
 dist-neu
 .DS_Store
 *.local

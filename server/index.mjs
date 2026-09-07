@@ -22,9 +22,9 @@
  * Переменные:
  *   PORT        порт, по умолчанию 8787
  *   PUBLIC_URL  публичный адрес, например https://sticker.example.ru
- *   SHOT_TOKEN  пароль для POST /shot. На публичном хостинге обязателен:
- *               без него любой желающий заставит сервер качать что угодно
- *               и забьёт ему память.
+ *   SHOT_TOKEN  пароль для POST /shot и POST /upload. На публичном хостинге
+ *               обязателен: без него любой желающий заставит сервер качать
+ *               что угодно и забьёт ему память.
  */
 import { createServer } from 'node:http'
 import { readFile } from 'node:fs/promises'
@@ -48,6 +48,15 @@ const PAGE = join(ROOT, 'sticker', 'index.html')
  */
 const BUDGET_BYTES = Number(process.env.BUDGET_MB ?? 150) * 1024 * 1024
 const KEEP = Number(process.env.KEEP ?? (PUBLIC_URL ? 200 : 24))
+/**
+ * Расширение по типу. Нужно именно в адресе: kie.ai определяет формат по
+ * ссылке и на адрес без расширения отвечает «File type not supported».
+ * Маршрут /i/ расширение всё равно отрезает, так что вреда от него нет.
+ */
+const EXT = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' }
+
+/** Предел на один загружаемый кадр. Base64 раздувает данные на треть. */
+const MAX_UPLOAD = Number(process.env.MAX_UPLOAD_MB ?? 12) * 1024 * 1024
 /** Сколько байт сейчас занято — пересчитывать Map на каждый запрос дорого. */
 let held = 0
 /**
@@ -95,6 +104,15 @@ function publicOrigin() {
 function send(res, status, body, headers = {}) {
   res.writeHead(status, { 'access-control-allow-origin': '*', ...headers })
   res.end(body)
+}
+
+/** Кладём готовые байты и сразу отдаём id: качать их неоткуда. */
+function store(body, type) {
+  const id = randomUUID().replace(/-/g, '').slice(0, 12)
+  held += body.length
+  shots.set(id, { size: body.length, pending: Promise.resolve({ body, type }) })
+  evict()
+  return id
 }
 
 /**
@@ -192,6 +210,47 @@ const server = createServer(async (req, res) => {
       budgetMb: Math.round(BUDGET_BYTES / 1024 / 1024),
     }),
       { 'content-type': 'application/json' })
+  }
+
+  /**
+   * Панель кладёт сюда снятый кадр и получает публичную ссылку на него.
+   *
+   * Нужен потому, что хранилище kie.ai (kieai.redpandaai.co) с панели
+   * недоступно — судя по всему, режется провайдером. Это самый первый шаг
+   * генерации, без него не работает вообще ничего. Наш домен панель видит,
+   * а kie.ai умеет скачать картинку по любой публичной ссылке.
+   */
+  if (req.method === 'POST' && url.pathname === '/upload') {
+    if (SHOT_TOKEN && req.headers.authorization !== `Bearer ${SHOT_TOKEN}`) {
+      return send(res, 401, JSON.stringify({ error: 'нужен токен' }), { 'content-type': 'application/json' })
+    }
+    try {
+      const chunks = []
+      let size = 0
+      for await (const chunk of req) {
+        size += chunk.length
+        // Кадр с камеры весит сотни килобайт; всё, что сильно больше, —
+        // не наш случай, и память под это отдавать незачем.
+        if (size > MAX_UPLOAD) return send(res, 413, JSON.stringify({ error: 'слишком большой файл' }),
+          { 'content-type': 'application/json' })
+        chunks.push(chunk)
+      }
+
+      const { dataUrl } = JSON.parse(Buffer.concat(chunks).toString())
+      const match = /^data:([^;]+);base64,(.+)$/s.exec(dataUrl ?? '')
+      if (!match) return send(res, 400, JSON.stringify({ error: 'нужен dataUrl' }),
+        { 'content-type': 'application/json' })
+
+      const type = match[1]
+      const id = store(Buffer.from(match[2], 'base64'), type)
+      const file = `/i/${id}.${EXT[type] ?? 'jpg'}`
+      const origin = publicOrigin()
+      send(res, 200, JSON.stringify({ url: origin ? `${origin}${file}` : null, image: file }),
+        { 'content-type': 'application/json' })
+    } catch (error) {
+      send(res, 400, JSON.stringify({ error: String(error) }), { 'content-type': 'application/json' })
+    }
+    return
   }
 
   if (req.method === 'GET' && url.pathname.startsWith('/i/')) {
