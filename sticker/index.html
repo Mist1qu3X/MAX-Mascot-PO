@@ -19,13 +19,20 @@
       radial-gradient(ellipse 80% 44% at 86% -4%, rgb(155 7 255/.6) 0%, rgb(155 7 255/0) 70%),
       var(--void);
     background-attachment:fixed}
-  h1{font-size:34px;line-height:1.1;margin:20px 0 8px;font-weight:800}
+  .top{display:flex;justify-content:flex-end;min-height:44px}
+  /* Кнопка языка — как на панели (src/components/LangToggle): круглая, в правом
+     верхнем углу, подписана языком, НА КОТОРЫЙ переключит. */
+  .lang{width:44px;height:44px;border-radius:50%;background:rgb(255 255 255/.09);
+    border:1px solid rgb(255 255 255/.16);color:#fff;font:inherit;font-size:14px;
+    font-weight:700;cursor:pointer;letter-spacing:.02em}
+  h1{font-size:34px;line-height:1.1;margin:12px 0 8px;font-weight:800}
   h1 b{background:var(--brand);-webkit-background-clip:text;background-clip:text;color:transparent;font-weight:800}
   .lead{color:var(--muted);font-size:17px;line-height:1.45;margin:0 0 22px}
   .card{position:relative;border-radius:26px;padding:8px;
     background:linear-gradient(180deg,#8f02ff 0%,#1a87ff 100%);margin-bottom:20px}
   .inner{border-radius:19px;background:#120a22;overflow:hidden;aspect-ratio:1;
-    display:flex;align-items:center;justify-content:center}
+    display:flex;flex-direction:column;gap:14px;align-items:center;justify-content:center}
+  .wait{color:var(--muted);font-size:14px;line-height:1.4;text-align:center;margin:0;padding:0 22px}
   .inner img{width:100%;height:100%;object-fit:contain;display:block}
   .spin{width:38px;height:38px;border:4px solid rgb(255 255 255/.18);border-top-color:#7a36ff;
     border-radius:50%;animation:r 900ms linear infinite}
@@ -53,50 +60,202 @@
 </head>
 <body>
 
-<h1>Ваш <b>цифровой маскот</b></h1>
-<p class="lead">Сохраните картинку и добавьте её стикером в MAX — это пара минут.</p>
+<div class="top"><button class="lang" id="lang" type="button">EN</button></div>
+
+<!-- Русский текст лежит прямо в разметке: он же язык по умолчанию, и если
+     скрипт не отработает, страница останется читаемой. Английский подставляет
+     applyLang() из словаря ниже. -->
+<h1 data-t="h1">Ваш <b>цифровой маскот</b></h1>
+<p class="lead" data-t="lead">Сохраните картинку и добавьте её стикером в MAX — это пара минут.</p>
 
 <div class="card"><div class="inner" id="frame"><div class="spin"></div></div></div>
 
-<button class="btn primary" id="save" disabled>Сохранить картинку</button>
-<a class="btn ghost" id="bot" href="https://max.ru/stickers" target="_blank" rel="noopener">Открыть бот «Стикеры в MAX»</a>
-<p class="hint" id="hint">Если кнопка не сработала — задержите палец на картинке и выберите «Сохранить в Фото».</p>
+<button class="btn primary" id="save" disabled data-t="save">Сохранить картинку</button>
+<a class="btn ghost" id="bot" href="https://max.ru/stickers" target="_blank" rel="noopener" data-t="bot">Открыть бот «Стикеры в MAX»</a>
+<p class="hint" id="hint" data-t="hintDefault">Если кнопка не сработала — задержите палец на картинке и выберите «Сохранить в Фото».</p>
 
-<h2>Как сделать стикер</h2>
+<h2 data-t="h2">Как сделать стикер</h2>
 <ol>
-  <li><b>Сохраните картинку</b> кнопкой выше — она попадёт в галерею телефона.</li>
-  <li><b>Откройте бот</b> кнопкой «Открыть бот» выше. Или найдите в поиске MAX
+  <li data-t="step1"><b>Сохраните картинку</b> кнопкой выше — она попадёт в галерею телефона.</li>
+  <li data-t="step2"><b>Откройте бот</b> кнопкой «Открыть бот» выше. Или найдите в поиске MAX
       <b>«Стикеры в MAX»</b> — у официального стоит синяя галочка.</li>
-  <li>Нажмите <b>«Начать»</b>, затем <b>«Создать набор»</b> и придумайте название.</li>
-  <li><b>Загрузите сохранённую картинку</b> из галереи и отправьте набор на проверку.</li>
-  <li>Готово — набор появится у вас в стикерах, им можно делиться.</li>
+  <li data-t="step3">Нажмите <b>«Начать»</b>, затем <b>«Создать набор»</b> и придумайте название.</li>
+  <li data-t="step4"><b>Загрузите сохранённую картинку</b> из галереи и отправьте набор на проверку.</li>
+  <li data-t="step5">Готово — набор появится у вас в стикерах, им можно делиться.</li>
 </ol>
 
-<p class="note">Картинка уже подходит боту по формату и размеру, дорабатывать её не нужно. Ссылка временная и живёт только пока вы рядом с панелью — сохраните сейчас.</p>
+<p class="note" data-t="note">Картинка уже подходит боту по формату и размеру, дорабатывать её не нужно. Ссылка временная и живёт только пока вы рядом с панелью — сохраните сейчас.</p>
 
 <script>
 (function () {
+  /**
+   * Тексты двух языков — как в `src/i18n.tsx` на панели, включая терминологию:
+   * «digital mascot», «Stickers in MAX» с типографскими кавычками.
+   *
+   * Ключи с `data-t` подставляются в разметку, остальные берёт код по ходу
+   * работы: ожидание, ошибки, подсказки после сохранения.
+   */
+  const TEXTS = {
+    ru: {
+      title: 'Ваш маскот — MAX',
+      h1: 'Ваш <b>цифровой маскот</b>',
+      lead: 'Сохраните картинку и добавьте её стикером в MAX — это пара минут.',
+      save: 'Сохранить картинку',
+      bot: 'Открыть бот «Стикеры в MAX»',
+      h2: 'Как сделать стикер',
+      step1: '<b>Сохраните картинку</b> кнопкой выше — она попадёт в галерею телефона.',
+      step2: '<b>Откройте бот</b> кнопкой «Открыть бот» выше. Или найдите в поиске MAX ' +
+             '<b>«Стикеры в MAX»</b> — у официального стоит синяя галочка.',
+      step3: 'Нажмите <b>«Начать»</b>, затем <b>«Создать набор»</b> и придумайте название.',
+      step4: '<b>Загрузите сохранённую картинку</b> из галереи и отправьте набор на проверку.',
+      step5: 'Готово — набор появится у вас в стикерах, им можно делиться.',
+      note: 'Картинка уже подходит боту по формату и размеру, дорабатывать её не нужно. ' +
+            'Ссылка временная и живёт только пока вы рядом с панелью — сохраните сейчас.',
+
+      mascotAlt: 'Ваш маскот',
+      preparing: 'Готовим…',
+      wait: 'Картинка ещё готовится — это занимает несколько секунд.',
+      errLink: 'Ссылка неполная — отсканируйте QR-код с экрана ещё раз.',
+      errImage: 'Картинка недоступна — возможно, срок ссылки истёк.',
+      hintDefault: 'Если кнопка не сработала — задержите палец на картинке и выберите «Сохранить в Фото».',
+      hintShare: 'В меню выберите «Сохранить изображение».',
+      hintSaved: 'Картинка сохранена в загрузки телефона.',
+      hintNewTab: 'Картинка открылась в новой вкладке — задержите на ней палец и выберите «Сохранить в Фото».',
+      langAria: 'Switch to English',
+    },
+    en: {
+      title: 'Your mascot — MAX',
+      h1: 'Your <b>digital mascot</b>',
+      lead: 'Save the image and add it as a sticker in MAX — it only takes a couple of minutes.',
+      save: 'Save the image',
+      bot: 'Open the “Stickers in MAX” bot',
+      h2: 'How to make a sticker',
+      step1: '<b>Save the image</b> with the button above — it goes to your phone’s gallery.',
+      step2: '<b>Open the bot</b> with the button above. Or search MAX for ' +
+             '<b>“Stickers in MAX”</b> — the official one has a blue check mark.',
+      step3: 'Tap <b>“Start”</b>, then <b>“Create a set”</b> and think up a name.',
+      step4: '<b>Upload the saved image</b> from your gallery and send the set for review.',
+      step5: 'Done — the set appears in your stickers and you can share it.',
+      note: 'The image already fits the bot’s format and size, no editing needed. ' +
+            'The link is temporary and lives only while you are near the panel — save it now.',
+
+      mascotAlt: 'Your mascot',
+      preparing: 'Preparing…',
+      wait: 'The image is still being prepared — this takes a few seconds.',
+      errLink: 'The link is incomplete — scan the QR code on the screen again.',
+      errImage: 'The image is unavailable — the link may have expired.',
+      hintDefault: 'If the button didn’t work, press and hold the image and choose “Save to Photos”.',
+      hintShare: 'Choose “Save Image” in the menu.',
+      hintSaved: 'The image has been saved to your phone’s downloads.',
+      hintNewTab: 'The image opened in a new tab — press and hold it and choose “Save to Photos”.',
+      langAria: 'Переключить на русский',
+    },
+  }
+
+  const STORE = 'sticker-lang'
   const q = new URLSearchParams(location.search)
-  const src = q.get('i')
+
+  /**
+   * Порядок как на панели: `?lang=` задаёт язык разово и не трогает
+   * сохранённый. Дальше — выбор посетителя, затем язык его телефона.
+   * Телефон личный, и о владельце он знает больше, чем язык, на котором
+   * кто-то оставил панель после себя.
+   */
+  function initialLang() {
+    const asked = (q.get('lang') || '').toLowerCase()
+    if (asked === 'en' || asked === 'ru') return asked
+    try {
+      const saved = localStorage.getItem(STORE)
+      if (saved === 'en' || saved === 'ru') return saved
+    } catch { /* приватный режим — переживём */ }
+    const nav = (navigator.languages && navigator.languages[0]) || navigator.language || ''
+    return nav.toLowerCase().startsWith('ru') ? 'ru' : 'en'
+  }
+
+  let lang = initialLang()
+  let T = TEXTS[lang]
+
   const frame = document.getElementById('frame')
   const save = document.getElementById('save')
   const hint = document.getElementById('hint')
   const bot = document.getElementById('bot')
+  const langBtn = document.getElementById('lang')
   if (q.get('bot')) bot.href = q.get('bot')
 
+  /**
+   * Что сейчас в рамке и в подсказке — чтобы при смене языка перерисовать их
+   * на актуальном тексте, а не откатить к исходному.
+   */
+  let frameState = 'spin'
+  let hintKey = 'hintDefault'
+  let busy = false
+
+  function renderFrame() {
+    if (frameState === 'img') return // в рамке картинка, текста там нет
+    if (frameState === 'errLink' || frameState === 'errImage') {
+      frame.innerHTML = '<div class="err">' + T[frameState] + '</div>'
+      return
+    }
+    frame.innerHTML = '<div class="spin"></div>' +
+      (frameState === 'wait' ? '<p class="wait">' + T.wait + '</p>' : '')
+  }
+
+  function applyLang(next) {
+    lang = next
+    T = TEXTS[lang]
+    document.documentElement.lang = lang
+    document.title = T.title
+    for (const el of document.querySelectorAll('[data-t]')) {
+      const key = el.dataset.t
+      if (T[key] != null) el.innerHTML = T[key]
+    }
+    if (!busy) save.textContent = T.save
+    hint.textContent = T[hintKey]
+    langBtn.textContent = lang === 'ru' ? 'EN' : 'RU'
+    langBtn.setAttribute('aria-label', T.langAria)
+    const shown = frame.querySelector('img')
+    if (shown) shown.alt = T.mascotAlt
+    else renderFrame()
+  }
+
+  langBtn.addEventListener('click', () => {
+    const next = lang === 'ru' ? 'en' : 'ru'
+    try { localStorage.setItem(STORE, next) } catch { /* приватный режим */ }
+    applyLang(next)
+  })
+
+  applyLang(lang)
+
+  const src = q.get('i')
   if (!src) {
-    frame.innerHTML = '<div class="err">Ссылка неполная — отсканируйте QR-код с экрана ещё раз.</div>'
+    frameState = 'errLink'
+    renderFrame()
     return
   }
 
   // Без crossOrigin: kie.ai отдаёт результат с двух разных хостов, и на одном
   // из них нет CORS-заголовков — с этим атрибутом картинка там просто не грузится.
   // Пиксели мы не читаем, атрибут не нужен.
+  // Панель показывает QR сразу, а копию картинки сервер к этому моменту
+  // ещё качает. Обычно посетитель этого не замечает, но если качается
+  // долго, крутящийся кружок без объяснений выглядит поломкой.
+  const slow = setTimeout(() => {
+    frameState = 'wait'
+    renderFrame()
+  }, 6000)
+
   const img = new Image()
-  img.alt = 'Ваш маскот'
-  img.onload = () => { frame.replaceChildren(img); save.disabled = false }
+  img.alt = T.mascotAlt
+  img.onload = () => {
+    clearTimeout(slow)
+    frameState = 'img'
+    frame.replaceChildren(img)
+    save.disabled = false
+  }
   img.onerror = () => {
-    frame.innerHTML = '<div class="err">Картинка недоступна — возможно, срок ссылки истёк.</div>'
+    clearTimeout(slow)
+    frameState = 'errImage'
+    renderFrame()
   }
   img.src = src
 
@@ -110,10 +269,15 @@
     return r.blob()
   }
 
+  function setHint(key) {
+    hintKey = key
+    hint.textContent = T[key]
+  }
+
   save.addEventListener('click', async () => {
     save.disabled = true
-    const was = save.textContent
-    save.textContent = 'Готовим…'
+    busy = true
+    save.textContent = T.preparing
     try {
       const b = await blob()
       const type = b.type || 'image/jpeg'
@@ -122,7 +286,7 @@
       // На айфоне это единственный надёжный способ положить картинку в «Фото».
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
         await navigator.share({ files: [file] })
-        hint.textContent = 'В меню выберите «Сохранить изображение».'
+        setHint('hintShare')
       } else {
         const url = URL.createObjectURL(b)
         const a = document.createElement('a')
@@ -132,7 +296,7 @@
         a.click()
         a.remove()
         setTimeout(() => URL.revokeObjectURL(url), 10_000)
-        hint.textContent = 'Картинка сохранена в загрузки телефона.'
+        setHint('hintSaved')
       }
     } catch (e) {
       if (e && e.name === 'AbortError') {
@@ -141,10 +305,11 @@
         // Сюда попадаем, когда хост картинки не отдаёт CORS и fetch запрещён.
         // Открываем картинку отдельной вкладкой: там её сохраняют долгим нажатием.
         window.open(src, '_blank', 'noopener')
-        hint.textContent = 'Картинка открылась в новой вкладке — задержите на ней палец и выберите «Сохранить в Фото».'
+        setHint('hintNewTab')
       }
     } finally {
-      save.textContent = was
+      busy = false
+      save.textContent = T.save
       save.disabled = false
     }
   })
