@@ -57,8 +57,36 @@ const EXT = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' }
 
 /** Предел на один загружаемый кадр. Base64 раздувает данные на треть. */
 const MAX_UPLOAD = Number(process.env.MAX_UPLOAD_MB ?? 12) * 1024 * 1024
+/**
+ * Сколько ждём kie.ai на одну попытку. Без предела зависший хост вешал
+ * скачивание навсегда: цикл из трёх попыток не начинал вторую, обещание
+ * не разрешалось, и телефон посетителя ждал картинку бесконечно.
+ */
+const DOWNLOAD_TIMEOUT_MS = Number(process.env.DOWNLOAD_TIMEOUT_MS ?? 15_000)
+/**
+ * Сколько телефон ждёт нашу копию, прежде чем мы отправим его к
+ * первоисточнику. Своя копия почти всегда лучше (не протухает, тот же
+ * origin, всегда с CORS), поэтому немного подождать стоит — но не дольше,
+ * чем посетитель готов смотреть на спиннер.
+ */
+const WAIT_FOR_COPY_MS = Number(process.env.WAIT_FOR_COPY_MS ?? 2500)
 /** Сколько байт сейчас занято — пересчитывать Map на каждый запрос дорого. */
 let held = 0
+/**
+ * Последние скачивания: сколько заняло и откуда. Без этого «фотка долго
+ * доходит» остаётся ощущением — не видно, кто тормозит: kie.ai, наш канал
+ * или телефон. Отдаётся в /health, живёт в памяти, места не занимает.
+ */
+const timings = []
+const TIMINGS_KEEP = 30
+
+function note(record) {
+  timings.push({ at: new Date().toISOString(), ...record })
+  if (timings.length > TIMINGS_KEEP) timings.shift()
+  const { kind, ms, bytes, host } = record
+  console.log(`[${kind}] ${ms} мс` + (bytes ? `, ${(bytes / 1024).toFixed(0)} КБ` : '') +
+    (host ? `, ${host}` : ''))
+}
 /**
  * id -> { pending }, где pending — обещание с телом и типом картинки.
  * Храним именно обещание, а не готовые байты: /shot обязан отвечать сразу,
@@ -110,7 +138,7 @@ function send(res, status, body, headers = {}) {
 function store(body, type) {
   const id = randomUUID().replace(/-/g, '').slice(0, 12)
   held += body.length
-  shots.set(id, { size: body.length, pending: Promise.resolve({ body, type }) })
+  shots.set(id, { size: body.length, source: null, pending: Promise.resolve({ body, type }) })
   evict()
   return id
 }
@@ -125,15 +153,37 @@ function keep(url) {
   // на плотность QR четыре знака не влияют.
   const id = randomUUID().replace(/-/g, '').slice(0, 12)
 
-  const entry = { size: 0 }
-  entry.pending = (async () => {
+  // Источник храним рядом: если скачать не успели, телефону есть куда уйти.
+  const entry = { size: 0, source: url, filled: false }
+
+  /*
+   * Запись можно заполнить с двух сторон: сами скачаем с kie.ai или панель
+   * пришлёт байты, которые у неё и так уже есть (POST /i/<id>). Кто успел,
+   * тот и заполнил — второй молча выбрасывает своё, чтобы не задвоить
+   * счётчик занятой памяти.
+   */
+  let settle
+  const filled = new Promise((resolve) => { settle = resolve })
+  entry.fill = (body, type, kind) => {
+    if (entry.filled) return false
+    entry.filled = true
+    entry.size = body.length
+    held += body.length
+    note({ kind, ms: Date.now() - entry.startedAt, bytes: body.length })
+    settle({ body, type })
+    evict()
+    return true
+  }
+  entry.startedAt = Date.now()
+
+  const downloading = (async () => {
     // Три попытки с паузой: один сетевой сбой не должен ронять картинку
     // навсегда. Без этого запись «отравлялась» — на панели оставалась
     // пустая рамка, и починить это можно было только новой генерацией.
     let response
     for (let attempt = 0; ; attempt++) {
       try {
-        response = await fetch(url)
+        response = await fetch(url, { signal: AbortSignal.timeout(DOWNLOAD_TIMEOUT_MS) })
         if (response.ok) break
         throw new Error(`HTTP ${response.status}`)
       } catch (error) {
@@ -142,17 +192,23 @@ function keep(url) {
       }
     }
     const body = Buffer.from(await response.arrayBuffer())
-    // Вес записываем в саму запись, чтобы вытеснение могло вычесть его
-    // синхронно. Раньше вычитание шло через .then, held внутри цикла не
-    // менялся, и while выгребал Map до дна вместе со свежей картинкой.
-    entry.size = body.length
-    held += body.length
-    evict()
-    return { body, type: (response.headers.get('content-type') ?? 'image/jpeg').split(';')[0] }
+    const type = (response.headers.get('content-type') ?? 'image/jpeg').split(';')[0]
+    // Вес и учёт памяти — внутри fill(): он же следит, чтобы запись не
+    // заполнили дважды и held не задвоился.
+    entry.fill(body, type, 'скачали с kie.ai')
   })()
   // Ошибку разберём при запросе картинки; здесь глушим, чтобы Node не ругался
   // на необработанное отклонение и не валил процесс.
-  entry.pending.catch(() => {})
+  downloading.catch((error) => {
+    note({ kind: 'скачать не вышло', ms: Date.now() - entry.startedAt, host: String(error) })
+  })
+
+  /*
+   * Ждём того, кто заполнит запись первым. Раньше здесь стояло само
+   * скачивание, и провал делал ожидание вечным; теперь провал лишь значит,
+   * что придётся дождаться панели или уйти к первоисточнику по таймауту.
+   */
+  entry.pending = filled
 
   shots.set(id, entry)
   evict()
@@ -220,6 +276,8 @@ const server = createServer(async (req, res) => {
       shots: shots.size,
       heldMb: Math.round(held / 1024 / 1024),
       budgetMb: Math.round(BUDGET_BYTES / 1024 / 1024),
+      // Последние скачивания: сразу видно, кто тормозит на реальном трафике.
+      timings,
     }),
       { 'content-type': 'application/json' })
   }
@@ -302,19 +360,83 @@ const server = createServer(async (req, res) => {
     return
   }
 
+  /*
+   * Панель кладёт сюда свою копию картинки.
+   *
+   * Она скачала её у kie.ai для показа на экране, так что байты у неё уже
+   * есть. Пока мы качаем тот же файл второй раз, эти байты просто лежат.
+   * Кто дойдёт первым, тот запись и заполнит: если наш канал до kie.ai
+   * медленный или хост недоступен, копия придёт с панели, и телефону не
+   * придётся ждать вовсе.
+   *
+   * Вызывается фоном, уже после показа экрана результата, поэтому на
+   * скорость появления QR не влияет.
+   */
+  if (req.method === 'POST' && url.pathname.startsWith('/i/')) {
+    if (SHOT_TOKEN && req.headers.authorization !== `Bearer ${SHOT_TOKEN}`) {
+      return send(res, 401, JSON.stringify({ error: 'нужен токен' }), { 'content-type': 'application/json' })
+    }
+    const shot = shots.get(url.pathname.slice(3).replace(/\.[a-z0-9]+$/i, ''))
+    if (!shot?.fill) return send(res, 404, JSON.stringify({ error: 'нет такой картинки' }),
+      { 'content-type': 'application/json' })
+    // Уже заполнена — панель опоздала, и это нормально: значит, мы успели сами.
+    if (shot.filled) return send(res, 200, JSON.stringify({ filled: 'уже' }),
+      { 'content-type': 'application/json' })
+
+    try {
+      const chunks = []
+      let size = 0
+      for await (const chunk of req) {
+        size += chunk.length
+        if (size > MAX_UPLOAD) return send(res, 413, JSON.stringify({ error: 'слишком большой файл' }),
+          { 'content-type': 'application/json' })
+        chunks.push(chunk)
+      }
+      const { dataUrl } = JSON.parse(Buffer.concat(chunks).toString())
+      const match = /^data:([^;]+);base64,(.+)$/s.exec(dataUrl ?? '')
+      if (!match) return send(res, 400, JSON.stringify({ error: 'нужен dataUrl' }),
+        { 'content-type': 'application/json' })
+
+      const filled = shot.fill(Buffer.from(match[2], 'base64'), match[1], 'прислала панель')
+      return send(res, 200, JSON.stringify({ filled: filled ? 'да' : 'уже' }),
+        { 'content-type': 'application/json' })
+    } catch (error) {
+      return send(res, 400, JSON.stringify({ error: String(error) }), { 'content-type': 'application/json' })
+    }
+  }
+
   if (req.method === 'GET' && url.pathname.startsWith('/i/')) {
     // Расширение в адресе не обязательно, но и не мешает — отрезаем.
     const shot = shots.get(url.pathname.slice(3).replace(/\.[a-z0-9]+$/i, ''))
     if (!shot) return send(res, 404, 'нет такой картинки')
 
-    // Посетитель мог отсканировать код раньше, чем мы докачали картинку —
-    // тогда просто ждём здесь, а не отвечаем ошибкой.
-    let body, type
-    try {
-      ({ body, type } = await shot.pending)
-    } catch (error) {
-      return send(res, 502, 'картинку скачать не удалось: ' + String(error))
+    /*
+     * Посетитель мог отсканировать код раньше, чем мы докачали картинку.
+     * Ждём — но с пределом: раньше здесь стояло голое `await shot.pending`,
+     * и телефон висел ровно столько, сколько kie.ai отдавал файл нам. Если
+     * тот хост подвисал, ожидание не кончалось никогда.
+     *
+     * Не дождались или скачать не вышло — отправляем к первоисточнику.
+     * Ссылка у нас есть, и картинка оттуда откроется быстрее, чем мы её
+     * перекачаем. Фоновое скачивание при этом продолжается: следующий
+     * запрос того же id уже получит нашу копию.
+     */
+    const askedAt = Date.now()
+    let timer
+    const ready = await Promise.race([
+      shot.pending.then((value) => value, () => null),
+      new Promise((resolve) => { timer = setTimeout(() => resolve(null), WAIT_FOR_COPY_MS) }),
+    ])
+    clearTimeout(timer)
+    const waited = Date.now() - askedAt
+    // Ждал ли телефон вообще — главный вопрос всей этой истории.
+    if (waited > 50) note({ kind: ready ? 'телефон ждал копию' : 'телефон ушёл к kie.ai', ms: waited })
+
+    if (!ready) {
+      if (shot.source) return send(res, 302, '', { location: shot.source })
+      return send(res, 504, 'картинку скачать не удалось')
     }
+    const { body, type } = ready
 
     // inline, а не attachment: если посетитель дойдёт до картинки напрямую,
     // она должна открыться, а не скачаться файлом.

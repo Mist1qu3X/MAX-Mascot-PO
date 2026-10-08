@@ -1,0 +1,26 @@
+.arc {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.track,
+.value {
+  fill: none;
+  stroke-linecap: round;
+}
+
+.track {
+  stroke: var(--c-void);
+}
+
+.value {
+  transition: stroke-dashoffset 400ms linear;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .value {
+    transition: none;
+  }
+}

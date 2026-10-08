@@ -1,0 +1,113 @@
+/* Размеры — в пикселях макета 3840 × 2160 */
+
+.screen {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background: var(--c-void);
+  overflow: hidden;
+  outline: none;
+}
+
+.cards {
+  position: absolute;
+  left: calc(1138 * var(--u));
+  top: 0;
+  width: calc(2702 * var(--u));
+  height: calc(1729 * var(--u));
+  pointer-events: none;
+}
+
+/* Цветная панель слева: во всю высоту, скруглена только справа. */
+.panel {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: calc(1904 * var(--u));
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  /* Низ текстового блока закреплён, заголовок растёт вверх. Так в макете:
+     у английского заголовок в две строки вместо четырёх, и при верхней
+     привязке весь блок уезжал вверх на 424 px макета. При русских четырёх
+     строках эта привязка даёт ровно прежние координаты — сверено наложением. */
+  padding: calc(var(--y-logo) * var(--u)) var(--pad-x) calc(293 * var(--u));
+  border-radius: 0 calc(var(--sky-radius) * var(--u)) calc(var(--sky-radius) * var(--u)) 0;
+  background: var(--grad-panel-h);
+}
+
+.logo {
+  width: calc(788 * var(--u));
+  height: calc(250 * var(--u));
+}
+
+.line {
+  display: block;
+  white-space: nowrap;
+}
+
+.title {
+  margin: auto 0 0;
+  font-size: calc(var(--fz-title) * var(--u));
+  line-height: calc(var(--lh-title) * var(--u));
+  font-weight: var(--fw-title);
+}
+
+.accent {
+  display: block;
+  width: fit-content;
+  background-image: var(--grad-brand);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  /*
+   * Градиент обрезается по коробке блока, а её высота — это интерлиньяж
+   * (212 при кегле 220). Базовая линия приходится на 174 px, под ней
+   * остаётся 38, а хвост «g» опускается на 42 — четырёх пикселей не
+   * хватало, и в «digital» буква срезалась. Отступ снизу расширяет
+   * коробку, отрицательный внешний возвращает вёрстку на место.
+   */
+  padding-bottom: 0.1em;
+  margin-bottom: -0.1em;
+}
+
+.subtitle {
+  margin: calc(64 * var(--u)) 0 0;
+  font-size: calc(96 * var(--u));
+  line-height: calc(116 * var(--u));
+  font-weight: var(--fw-lead);
+}
+
+/* Приглашение справа снизу, по правому краю. */
+.cta {
+  position: absolute;
+  right: var(--pad-x);
+  /* Привязка верхом, а не низом: в английском макете приглашение в одну
+     строку, и его первая строка начинается там же, где первая строка
+     русского двухстрочного. При привязке низом одна строка уезжала вниз
+     на 135 px макета. 1653 = 2160 − 237 − 270, то есть ровно прежнее
+     положение русского варианта. */
+  top: calc(1653 * var(--u));
+  margin: 0;
+  font-size: calc(112 * var(--u));
+  line-height: calc(135 * var(--u));
+  font-weight: var(--fw-cta);
+  text-align: right;
+  animation: breathe 3.2s ease-in-out infinite;
+}
+
+@keyframes breathe {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cta {
+    animation: none;
+  }
+}

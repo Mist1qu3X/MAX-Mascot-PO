@@ -1,0 +1,60 @@
+/* Минимальный ресет + режим киоска: ничего не выделяется, не тянется, не скроллится. */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  touch-action: none;
+  overscroll-behavior: none;
+}
+
+body {
+  background: var(--c-void);
+  color: var(--c-text);
+  font-family: var(--font-ui);
+  /* ss01 — фирменные альтернативные начертания VK Sans Display
+     (в частности «а» без шпоры), именно они в макете. */
+  font-feature-settings: 'ss01' 1;
+  overflow: hidden;
+  overscroll-behavior: none;
+  /* none, а не manipulation: manipulation глушит только двойной тап,
+     а щипок для зума и панорамирование оставляет. На панели не нужно
+     ни то, ни другое — экран не должен уезжать ни при каком касании. */
+  touch-action: none;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-user-select: none;
+  user-select: none;
+  /* Долгое нажатие не должно вызывать системное меню «сохранить/копировать». */
+  -webkit-touch-callout: none;
+}
+
+img {
+  display: block;
+  max-width: 100%;
+  -webkit-user-drag: none;
+  user-select: none;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}

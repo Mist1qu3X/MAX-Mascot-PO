@@ -1,0 +1,44 @@
+/*
+ * VK Sans Display — фирменный шрифт макета.
+ * Исходники (OTF/TTF, все ширины и начертания) лежат в /fonts,
+ * здесь подключены только те начертания, что использует макет:
+ * Regular, Medium, DemiBold и Bold прямого начертания — woff2, локально, без сети.
+ * Добавить ещё вес: сконвертировать нужный TTF в woff2 и дописать @font-face.
+ */
+
+@font-face {
+  font-family: 'VK Sans Display';
+  src: url('../assets/fonts/VKSansDisplay-regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: block;
+}
+
+@font-face {
+  font-family: 'VK Sans Display';
+  src: url('../assets/fonts/VKSansDisplay-bold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: block;
+}
+
+
+@font-face {
+  font-family: 'VK Sans Display';
+  src: url('../assets/fonts/VKSansDisplay-medium.woff2') format('woff2');
+  font-weight: 500;
+  font-style: normal;
+  font-display: block;
+}
+
+@font-face {
+  font-family: 'VK Sans Display';
+  src: url('../assets/fonts/VKSansDisplay-demibold.woff2') format('woff2');
+  font-weight: 600;
+  font-style: normal;
+  font-display: block;
+}
+
+:root {
+  --font-ui: 'VK Sans Display', system-ui, sans-serif;
+}

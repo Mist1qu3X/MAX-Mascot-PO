@@ -1,0 +1,75 @@
+/* Служебный экран: макета нет, важна читаемость с расстояния вытянутой руки.
+   Размеры от меньшей стороны окна — экран открывают в любой ориентации. */
+.screen {
+  --s: min(1vw, 1vh);
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  overflow: auto;
+  padding: calc(4 * var(--s));
+  background: var(--c-void);
+  color: #fff;
+  font-size: calc(2.1 * var(--s));
+  line-height: 1.45;
+}
+
+.title {
+  margin: 0 0 calc(3 * var(--s));
+  font-size: calc(4 * var(--s));
+  font-weight: 700;
+}
+
+.list {
+  margin: 0 0 calc(4 * var(--s));
+  padding: 0;
+  list-style: none;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: calc(4 * var(--s)) minmax(0, 14em) minmax(0, 1fr);
+  gap: calc(1 * var(--s));
+  align-items: baseline;
+  padding: calc(1.2 * var(--s)) 0;
+  border-bottom: 1px solid rgb(255 255 255 / 0.1);
+}
+
+.mark { font-weight: 700; color: rgb(255 255 255 / 0.4) }
+.row[data-state='ok'] .mark { color: #4ade80 }
+.row[data-state='fail'] .mark { color: #f87171 }
+
+.name { font-weight: 600 }
+.value { color: rgb(255 255 255 / 0.7); word-break: break-word }
+
+/* Пояснение к провалу занимает всю ширину под строкой. */
+.hint {
+  grid-column: 2 / -1;
+  color: #f87171;
+  font-size: calc(1.8 * var(--s));
+}
+
+.facts { margin: 0 0 calc(4 * var(--s)) }
+.facts > div {
+  display: grid;
+  grid-template-columns: minmax(0, 14em) minmax(0, 1fr);
+  gap: calc(1 * var(--s));
+  padding: calc(0.6 * var(--s)) 0;
+}
+.facts dt { color: rgb(255 255 255 / 0.55) }
+.facts dd { margin: 0; word-break: break-word }
+
+.actions { display: flex; gap: calc(2 * var(--s)) }
+
+.primary,
+.ghost {
+  padding: calc(1.6 * var(--s)) calc(4 * var(--s));
+  border-radius: 999px;
+  font: inherit;
+  font-size: calc(2.2 * var(--s));
+  font-weight: 600;
+  color: #fff;
+  cursor: pointer;
+}
+
+.primary { background: linear-gradient(90deg, #a22bdf, #30c4ff) }
+.ghost { background: rgb(255 255 255 / 0.1); border: 1px solid rgb(255 255 255 / 0.2) }

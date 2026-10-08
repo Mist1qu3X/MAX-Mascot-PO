@@ -1,0 +1,35 @@
+/* Размеры — в пикселях макета, как и везде. */
+.button {
+  position: absolute;
+  /* Ближе к углу, чем поля контента: кнопка служебная и не должна
+     выглядеть частью текстового блока. Логотип стоит на --y-logo (239),
+     здесь заметно выше и правее. */
+  top: calc(96 * var(--u));
+  right: calc(96 * var(--u));
+  z-index: 2;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: calc(180 * var(--u));
+  height: calc(180 * var(--u));
+  padding: 0;
+
+  border: calc(3 * var(--u)) solid rgb(255 255 255 / 0.35);
+  border-radius: 50%;
+  background: rgb(255 255 255 / 0.12);
+  backdrop-filter: blur(calc(20 * var(--u)));
+
+  font: inherit;
+  font-size: calc(68 * var(--u));
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: #fff;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* На панели нет наведения, но есть касание — отклик нужен. */
+.button:active {
+  background: rgb(255 255 255 / 0.24);
+}

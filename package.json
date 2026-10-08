@@ -1,0 +1,31 @@
+{
+  "name": "max-po",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "MAX — приложение для тач-панели (веб-версия, позже — сборка в Neutralino)",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview --port 4173",
+    "sticker": "node server/index.mjs",
+    "neu:run": "npm run build && neu run",
+    "neu:build": "npm run build && neu build --release && cp launcher/* dist/max-mascot/",
+    "mac:app": "npm run neu:build && node tools/mac-app.mjs"
+  },
+  "dependencies": {
+    "qrcode": "^1.5.4",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8"
+  },
+  "devDependencies": {
+    "@neutralinojs/neu": "^11.7.2",
+    "@types/node": "^26.4.1",
+    "@types/qrcode": "^1.5.6",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.7",
+    "@vitejs/plugin-react": "^6.1.1",
+    "typescript": "~5.9.3",
+    "vite": "^8.2.2"
+  }
+}

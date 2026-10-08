@@ -1,0 +1,140 @@
+/* Размеры — в пикселях макета 2160 × 3840, см. src/styles/tokens.css */
+
+.screen {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  background: var(--c-void);
+  outline: none;
+}
+
+/* Цветной блок над тёмной плашкой, снизу скруглён. */
+.sky {
+  position: absolute;
+  inset: 0 0 var(--footer-h) 0;
+  background: var(--grad-sky-result);
+  border-radius: 0 0 calc(var(--sky-radius) * var(--u)) calc(var(--sky-radius) * var(--u));
+}
+
+.copy {
+  position: relative;
+  padding: calc(var(--y-logo) * var(--u)) var(--pad-x) 0;
+}
+
+.logo {
+  width: calc(788 * var(--u));
+  height: calc(250 * var(--u));
+}
+
+.line {
+  display: block;
+  white-space: nowrap;
+}
+
+.title {
+  margin: calc(var(--gap-title) * var(--u)) 0 0;
+  font-size: calc(var(--fz-title) * var(--u));
+  line-height: calc(var(--lh-title) * var(--u));
+  font-weight: var(--fw-title);
+}
+
+/* --- Карточка с маскотом --------------------------------------------- */
+
+.card {
+  position: absolute;
+  left: var(--pad-x);
+  top: calc(1170 * var(--u));
+  width: calc(1728 * var(--u));
+  height: calc(1648 * var(--u));
+  padding: calc(var(--preview-border) * var(--u));
+  border-radius: calc((var(--card-radius) + var(--preview-border)) * var(--u));
+  background: linear-gradient(180deg, #8f02ff 0%, #1a87ff 100%);
+}
+
+.inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: calc(var(--card-radius) * var(--u));
+  background: var(--c-void);
+  overflow: hidden;
+}
+
+.mascot {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Белая плашка с QR прижата к низу карточки. */
+.qrCard {
+  position: absolute;
+  left: calc(var(--qr-card-inset) * var(--u));
+  right: calc(var(--qr-card-inset) * var(--u));
+  bottom: calc(var(--qr-card-inset) * var(--u));
+  display: flex;
+  align-items: center;
+  gap: calc(var(--qr-gap) * var(--u));
+  padding: calc(var(--qr-pad) * var(--u));
+  border-radius: calc(var(--qr-card-radius) * var(--u));
+  background: #fff;
+}
+
+.qr {
+  flex: 0 0 auto;
+  width: calc(var(--qr-size) * var(--u));
+  height: calc(var(--qr-size) * var(--u));
+}
+
+.qrText {
+  margin: 0;
+  /* Флекс-элемент по умолчанию не сжимается меньше своего содержимого:
+     длинная строка не обрезалась, а раздвигала плашку. С min-width: 0
+     переполнение становится видимым, и useFitText его ловит. */
+  min-width: 0;
+  font-size: calc(var(--fz-qr) * var(--u));
+  line-height: calc(var(--lh-qr) * var(--u));
+  font-weight: var(--fw-qr);
+  color: #000;
+}
+
+/* Что делать дальше. Живёт на тёмной плашке над приглашением: на светлом
+   градиенте под карточкой белый текст не читается. Инструкция нужна именно
+   здесь — на телефон по QR уезжает только картинка, без подсказок. */
+.steps {
+  position: absolute;
+  left: var(--pad-x);
+  right: var(--pad-x);
+  top: calc(var(--y-steps) * var(--u)); /* от верха плашки */
+  margin: 0;
+  font-size: calc(var(--fz-steps) * var(--u));
+  line-height: calc(var(--lh-steps) * var(--u));
+  font-weight: var(--fw-lead);
+  text-align: center;
+  color: rgb(255 255 255 / 0.6);
+}
+
+/* --- Нижняя плашка --------------------------------------------------- */
+
+.footer {
+  position: absolute;
+  inset: auto 0 0 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: var(--footer-h);
+  background: var(--c-void);
+}
+
+.cta {
+  margin: 0;
+  font-size: calc(var(--fz-cta) * var(--u));
+  line-height: calc(var(--lh-cta) * var(--u));
+  font-weight: var(--fw-cta);
+  text-align: center;
+  transform: translateY(calc(var(--cta-nudge) * var(--u)));
+}

@@ -1,22 +1,23 @@
-node_modules
-dist
-web
-bin
-dist-neu
-.DS_Store
-*.local
+# Dependencies and generated builds
+/node_modules/
+/dist/
+/web/
+/bin/
+/dist-neu/
 *.tsbuildinfo
-.env
-.env.local
-.env.*.local
+*.log
 
-# --- Что уезжает в репозиторий Max-sticker -------------------------------
-# Репозиторий нужен Dokploy, чтобы собрать образ по Dockerfile, а тому нужны
-# ровно две папки: server/ и sticker/. Панель (src/, assets/, avatar/)
-# остаётся локальной — 140 МБ макетов ради 20 КБ сервера класть незачем.
-/*
-!/.gitignore
-!/Dockerfile
-!/.dockerignore
-!/server/
-!/sticker/
+# Local environment and editor files
+.env
+.env.*
+!.env.example
+*.local
+.DS_Store
+
+# Local browser profiles and generated screenshot captures
+/.shots/
+
+# Large Figma exports and source font files; runtime assets live in src/assets/
+/assets/
+/en-assets/
+/fonts/

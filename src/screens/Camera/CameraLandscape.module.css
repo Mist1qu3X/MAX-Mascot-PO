@@ -1,0 +1,115 @@
+/* Размеры — в пикселях макета 3840 × 2160 */
+
+.screen {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--grad-sky-camera-h);
+}
+
+.logo {
+  position: absolute;
+  left: var(--pad-x);
+  top: calc(var(--y-logo) * var(--u));
+  width: calc(788 * var(--u));
+  height: calc(250 * var(--u));
+}
+
+.line {
+  display: block;
+  white-space: nowrap;
+}
+
+/* Заголовок прижат к низу левой колонки. */
+.title {
+  position: absolute;
+  left: var(--pad-x);
+  top: calc(1493 * var(--u));
+  margin: 0;
+  font-size: calc(var(--fz-title) * var(--u));
+  line-height: calc(var(--lh-title) * var(--u));
+  font-weight: var(--fw-title);
+}
+
+/* --- Окно превью ----------------------------------------------------- */
+
+.preview {
+  position: absolute;
+  left: calc(1506 * var(--u));
+  top: calc(240 * var(--u));
+  width: calc(2118 * var(--u));
+  height: calc(1680 * var(--u));
+  padding: calc(var(--preview-border) * var(--u));
+  border-radius: calc((var(--preview-radius) + var(--preview-border)) * var(--u));
+  background: linear-gradient(180deg, #8f02ff 0%, #1a87ff 100%);
+}
+
+.viewport {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: calc(var(--preview-radius) * var(--u));
+  background: var(--c-void);
+  overflow: hidden;
+}
+
+.video,
+.shot {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity 240ms ease;
+}
+
+.video[data-visible],
+.shot {
+  opacity: 1;
+}
+
+/* Зеркало и обрезка широкого угла приходят инлайном из cropTransform():
+   держать их здесь нельзя, иначе числа разъедутся с обрезкой снимка.
+   Снимок (.shot) уже обрезан при съёмке — его трансформировать не надо. */
+
+.message {
+  position: absolute;
+  inset: auto calc(120 * var(--u));
+  top: 50%;
+  transform: translateY(-50%);
+  margin: 0;
+  font-size: calc(84 * var(--u));
+  line-height: 1.3;
+  font-weight: var(--fw-lead);
+  text-align: center;
+  white-space: pre-line;
+  color: rgb(255 255 255 / 0.75);
+}
+
+/* --- Кружок отсчёта -------------------------------------------------- */
+
+.badge {
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: calc(var(--badge-size) * var(--u));
+  height: calc(var(--badge-size) * var(--u));
+  box-sizing: border-box;
+  border: calc(var(--badge-ring) * var(--u)) solid rgb(255 255 255 / 0.55);
+  border-radius: 50%;
+  background: linear-gradient(180deg, #0799d1 0%, #3a6ce4 100%);
+}
+
+.count {
+  font-size: calc(var(--fz-count) * var(--u));
+  line-height: 1;
+  font-weight: var(--fw-count);
+  color: #fff;
+  transform: translateY(calc(var(--count-nudge) * var(--u)));
+}

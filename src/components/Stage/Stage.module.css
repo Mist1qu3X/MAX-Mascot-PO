@@ -1,0 +1,7 @@
+.stage {
+  width: calc(var(--design-w) * var(--u));
+  height: 100dvh;
+  margin-inline: auto;
+  position: relative;
+  overflow: hidden;
+}

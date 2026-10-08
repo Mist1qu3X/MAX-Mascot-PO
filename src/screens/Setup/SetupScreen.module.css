@@ -1,0 +1,161 @@
+/* Экран настройки не привязан к сетке макета: формат ещё не выбран.
+   Всё считается от меньшей стороны окна, чтобы читалось и лёжа, и стоя. */
+
+.screen {
+  --s: min(1vw, 1vh);
+
+  display: flex;
+  width: 100%;
+  height: 100%;
+  padding: calc(3 * var(--s));
+  background:
+    radial-gradient(
+      ellipse 90% 70% at 20% 0%,
+      rgb(40 139 255 / 0.55) 0%,
+      rgb(40 139 255 / 0.28) 40%,
+      rgb(40 139 255 / 0) 100%
+    ),
+    radial-gradient(
+      ellipse 90% 70% at 85% 10%,
+      rgb(155 7 255 / 0.6) 0%,
+      rgb(155 7 255 / 0.3) 40%,
+      rgb(155 7 255 / 0) 100%
+    ),
+    var(--c-void);
+  overflow: auto;
+}
+
+.sheet {
+  /* margin: auto вместо align-items: center — при нехватке высоты
+     содержимое не обрезается сверху, а прокручивается. */
+  margin: auto;
+  width: min(calc(92 * var(--s)), 860px);
+  display: flex;
+  flex-direction: column;
+  gap: calc(3 * var(--s));
+}
+
+.logo {
+  width: calc(18 * var(--s));
+  height: auto;
+}
+
+.title {
+  margin: 0;
+  font-size: calc(5.5 * var(--s));
+  line-height: 1.1;
+  font-weight: var(--fw-title);
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: calc(2 * var(--s));
+}
+
+.label {
+  margin: 0;
+  font-size: calc(2.6 * var(--s));
+  line-height: 1.2;
+  font-weight: 400;
+  color: rgb(255 255 255 / 0.6);
+}
+
+.options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(2 * var(--s));
+}
+
+.option {
+  flex: 1 1 calc(30 * var(--s));
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: calc(1.4 * var(--s));
+  padding: calc(2.4 * var(--s));
+  border: calc(0.35 * var(--s)) solid rgb(255 255 255 / 0.16);
+  border-radius: calc(3 * var(--s));
+  background: rgb(255 255 255 / 0.06);
+  text-align: left;
+  transition: border-color 160ms ease, background-color 160ms ease;
+}
+
+.option[aria-pressed='true'] {
+  border-color: #7c33ff;
+  background: rgb(124 51 255 / 0.22);
+}
+
+.option:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.optionSlim {
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Пропорции панели: маленький прямоугольник нужной формы. */
+.preview {
+  display: block;
+  height: calc(9 * var(--s));
+  border-radius: calc(0.8 * var(--s));
+  background: var(--grad-brand);
+}
+
+.preview[data-format='portrait'] {
+  aspect-ratio: 9 / 16;
+}
+
+.preview[data-format='landscape'] {
+  aspect-ratio: 16 / 9;
+}
+
+.optionName {
+  font-size: calc(2.8 * var(--s));
+  font-weight: var(--fw-count);
+}
+
+.optionNote {
+  font-size: calc(2.1 * var(--s));
+  color: rgb(255 255 255 / 0.5);
+  font-variant-numeric: tabular-nums;
+}
+
+.start {
+  align-self: flex-start;
+  padding: calc(2.2 * var(--s)) calc(6 * var(--s));
+  border-radius: 999px;
+  background: var(--grad-brand);
+  font-size: calc(3 * var(--s));
+  font-weight: var(--fw-count);
+  color: #fff;
+}
+
+.hint {
+  margin: 0;
+  font-size: calc(2 * var(--s));
+  line-height: 1.4;
+  color: rgb(255 255 255 / 0.45);
+}
+
+/* Служебная кнопка рядом с «Запустить» — визуально тише главной. */
+.buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(2 * var(--s, 1vmin));
+  align-items: center;
+}
+
+.secondary {
+  padding: calc(1.4 * var(--s, 1vmin)) calc(3.4 * var(--s, 1vmin));
+  border: 1px solid rgb(255 255 255 / 0.24);
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.08);
+  font: inherit;
+  font-weight: 600;
+  color: #fff;
+  cursor: pointer;
+}

@@ -1,0 +1,63 @@
+/* Размеры — в пикселях макета 2160 × 3840, см. src/styles/tokens.css */
+
+.sheet {
+  position: absolute;
+  inset: calc(var(--sheet-top) * var(--u)) 0 0 0;
+  border-radius: calc(var(--sheet-radius) * var(--u)) calc(var(--sheet-radius) * var(--u)) 0 0;
+  background: var(--grad-sheet);
+}
+
+/* Дуга с процентами: коробка дуги 1248 × 672, её верх — на 2044. */
+.gauge {
+  position: absolute;
+  left: 50%;
+  top: calc((2044 - var(--sheet-top)) * var(--u));
+  width: calc(1248 * var(--u));
+  transform: translateX(-50%);
+}
+
+/* --- Горизонтальная раскладка: панель выезжает слева ------------------ */
+
+.sheet[data-format='landscape'] {
+  inset: 0 auto 0 0;
+  width: calc(2160 * var(--u));
+  border-radius: 0 calc(var(--sheet-radius) * var(--u)) calc(var(--sheet-radius) * var(--u)) 0;
+  background: var(--grad-sheet-h);
+}
+
+.sheet[data-format='landscape'] .gauge {
+  top: calc(518 * var(--u));
+}
+
+.sheet[data-format='landscape'] .caption {
+  top: calc(1326 * var(--u));
+}
+
+.percent {
+  position: absolute;
+  left: 0;
+  right: 0;
+  /* Центр строки — на 2549 по макету, то есть выше центра дуги. */
+  top: calc((2549 - 2044) * var(--u));
+  transform: translateY(calc(-50% + var(--percent-nudge) * var(--u)));
+  font-size: calc(var(--fz-percent) * var(--u));
+  line-height: 1;
+  font-weight: var(--fw-percent);
+  letter-spacing: calc(var(--ls-percent) * var(--u));
+  text-align: center;
+  color: var(--c-text);
+}
+
+.caption {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc((var(--y-caption) - var(--sheet-top)) * var(--u));
+  margin: 0;
+  font-size: calc(var(--fz-caption) * var(--u));
+  line-height: calc(var(--lh-caption) * var(--u));
+  font-weight: var(--fw-lead);
+  text-align: center;
+  white-space: pre-line;
+  color: var(--c-text);
+}

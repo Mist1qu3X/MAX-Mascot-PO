@@ -1,0 +1,120 @@
+/* Размеры — в пикселях макета 3840 × 2160 */
+
+.screen {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background: var(--c-void);
+  overflow: hidden;
+  outline: none;
+}
+
+.panel {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: calc(1904 * var(--u));
+  height: 100%;
+  padding: calc(var(--y-logo) * var(--u)) var(--pad-x) 0;
+  border-radius: 0 calc(var(--sky-radius) * var(--u)) calc(var(--sky-radius) * var(--u)) 0;
+  background: var(--grad-panel-result-h);
+}
+
+.logo {
+  width: calc(788 * var(--u));
+  height: calc(250 * var(--u));
+}
+
+.line {
+  display: block;
+  white-space: nowrap;
+}
+
+.title {
+  margin: calc(634 * var(--u)) 0 0;
+  font-size: calc(var(--fz-title) * var(--u));
+  line-height: calc(var(--lh-title) * var(--u));
+  font-weight: var(--fw-title);
+}
+
+.cta {
+  margin: calc(64 * var(--u)) 0 0;
+  font-size: calc(var(--fz-cta) * var(--u));
+  line-height: calc(var(--lh-cta) * var(--u));
+  font-weight: var(--fw-cta);
+}
+
+/* --- Карточка с маскотом --------------------------------------------- */
+
+.card {
+  position: absolute;
+  left: calc(2048 * var(--u));
+  top: calc(106 * var(--u));
+  width: calc(1576 * var(--u));
+  height: calc(1680 * var(--u));
+  padding: calc(var(--preview-border) * var(--u));
+  border-radius: calc((var(--card-radius) + var(--preview-border)) * var(--u));
+  background: linear-gradient(180deg, #8f02ff 0%, #1a87ff 100%);
+}
+
+.inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: calc(var(--card-radius) * var(--u));
+  background: var(--c-void);
+  overflow: hidden;
+}
+
+.mascot {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.qrCard {
+  position: absolute;
+  left: calc(var(--qr-card-inset) * var(--u));
+  right: calc(var(--qr-card-inset) * var(--u));
+  bottom: calc(var(--qr-card-inset) * var(--u));
+  display: flex;
+  align-items: center;
+  gap: 0;
+  padding: calc(var(--qr-pad) * var(--u));
+  border-radius: calc(var(--qr-card-radius) * var(--u));
+  background: #fff;
+}
+
+.qr {
+  flex: 0 0 auto;
+  width: calc(var(--qr-size) * var(--u));
+  height: calc(var(--qr-size) * var(--u));
+}
+
+.qrText {
+  margin: 0;
+  /* Флекс-элемент по умолчанию не сжимается меньше своего содержимого:
+     длинная строка не обрезалась, а раздвигала плашку. С min-width: 0
+     переполнение становится видимым, и useFitText его ловит. */
+  min-width: 0;
+  /* В горизонтали текст у QR чуть мельче и плотнее, чем в вертикали. */
+  font-size: calc(96 * var(--u));
+  line-height: calc(107 * var(--u));
+  font-weight: 500;
+  color: #000;
+}
+
+/* Подпись под карточкой, по её левому краю. Строк три вместо двух из макета,
+   поэтому кегль поджат: под карточкой всего 374 px до низа экрана, в исходном
+   размере третья строка вылезала за край. Блок центрирован в этом просвете. */
+.caption {
+  position: absolute;
+  left: calc(2048 * var(--u));
+  top: calc(1835 * var(--u));
+  margin: 0;
+  font-size: calc(84 * var(--u));
+  line-height: calc(92 * var(--u));
+  font-weight: 500;
+}

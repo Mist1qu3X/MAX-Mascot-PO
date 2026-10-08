@@ -1,0 +1,55 @@
+{
+  "$schema": "https://raw.githubusercontent.com/neutralinojs/neutralinojs/main/schemas/neutralino.config.schema.json",
+  "applicationId": "tech.alavenir.max.mascot",
+  "version": "1.0.0",
+  "defaultMode": "window",
+  "port": 8231,
+  "documentRoot": "/web/",
+  "url": "/",
+  "enableServer": true,
+  "enableNativeAPI": true,
+  "tokenSecurity": "none",
+  "logging": {
+    "enabled": true,
+    "writeToLogFile": true
+  },
+  "nativeAllowList": [
+    "app.*",
+    "os.*",
+    "window.*",
+    "events.*",
+    "filesystem.readFile",
+    "filesystem.appendFile",
+    "filesystem.writeFile",
+    "filesystem.getStats"
+  ],
+  "modes": {
+    "window": {
+      "title": "MAX — цифровой маскот",
+      "width": 1080,
+      "height": 1920,
+      "minWidth": 480,
+      "minHeight": 480,
+      "fullScreen": true,
+      "alwaysOnTop": true,
+      "icon": "/web/favicon.svg",
+      "enableInspector": false,
+      "borderless": true,
+      "maximize": true,
+      "hidden": false,
+      "resizable": false,
+      "exitProcessOnClose": true
+    }
+  },
+  "cli": {
+    "binaryName": "max-mascot",
+    "resourcesPath": "/web/",
+    "extensionsPath": "/extensions/",
+    "clientLibrary": "/public/neutralino.js",
+    "binaryVersion": "5.5.0",
+    "clientVersion": "5.5.0"
+  },
+  "_comment_tokenSecurity": "one-time не работает в этой сборке: нативные вызовы висят молча, без ошибки и без записи в лог — проверено и под neu run, и в релизе. Сервер слушает только localhost на случайном порту, панель выделенная, поэтому none здесь приемлем.",
+  "_comment_alwaysOnTop": "Окно держим поверх всего: на панели под ним не должно всплывать ничего постороннего — ни RustDesk, ни системные уведомления. Для обслуживания приложение придётся свернуть или закрыть с клавиатуры.",
+  "_comment_port": "Фиксированный порт, а не 0. WebView2 хранит разрешение на камеру по origin, а при port: 0 Neutralino брал случайный порт на каждый запуск — origin менялся, и разрешение спрашивалось заново."
+}
