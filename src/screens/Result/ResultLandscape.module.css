@@ -68,16 +68,19 @@
   width: 100%;
   height: 100%;
   border-radius: 50%;
-  background: var(--c-void);
+  background: var(--c-mascot-bg);
   overflow: hidden;
 }
 
+/* lighten — максимум по каждому каналу с фоном круга: чёрный фон картинки
+   становится ровно --c-mascot-bg, всё, что светлее, остаётся как было. */
 .mascot {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
+  mix-blend-mode: lighten;
 }
 
 /* Там же, где была внутри карточки: 2048 + 8 рамки + 24 отступа = 2080
