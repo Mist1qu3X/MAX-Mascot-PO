@@ -23,9 +23,13 @@ const DEFAULT_DELAY_S = 8
 
 const REASONS: FailureReason[] = ['config', 'network', 'policy', 'gesture', 'timeout', 'api']
 
-/** `?url` — только адреса: картинки по 2–3 МБ, грузит их сам `<img>`. */
+/**
+ * `?url` — только адреса, грузит их сам `<img>`. WebP, а не PNG: прозрачность
+ * та же, а весят по 110–330 КБ вместо 2–3 МБ. Dokploy скачивает репозиторий
+ * при каждом деплое — PNG делали это скачивание на 36 МБ тяжелее.
+ */
 const MASCOTS = Object.values(
-  import.meta.glob<string>('/avatar/Rectangle*.png', { eager: true, query: '?url', import: 'default' }),
+  import.meta.glob<string>('/avatar/Rectangle*.webp', { eager: true, query: '?url', import: 'default' }),
 )
 
 /** `?mascot=` закрепляет картинку по части имени файла, иначе — случайная. */

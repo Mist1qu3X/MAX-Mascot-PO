@@ -21,3 +21,7 @@
 /assets/
 /en-assets/
 /fonts/
+
+# Схема промпта из Figma (40 МБ) — только для справки, см. src/services/kie.ts.
+# Dokploy скачивает репозиторий при каждом деплое, тяжёлому тут не место.
+/avatar/Frame 2147239707.png
