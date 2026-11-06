@@ -63,8 +63,10 @@
   gap: calc(2 * var(--s));
 }
 
+/* Ширина — как у двух вариантов в ряд: сейчас вариант один, но растягивать
+   его на всю строку не нужно. 50% минус половина зазора между ними. */
 .option {
-  flex: 1 1 calc(30 * var(--s));
+  flex: 0 1 calc(50% - 1 * var(--s));
   display: flex;
   flex-direction: column;
   align-items: flex-start;
