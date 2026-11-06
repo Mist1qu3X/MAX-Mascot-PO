@@ -11,6 +11,15 @@ type SetupScreenProps = {
 }
 
 /**
+ * Что предлагаем на экране. Сейчас панель одна — вертикальная и на русском,
+ * поэтому выбор сведён к одному варианту. Горизонтальные экраны и английский
+ * в коде остались: вернуть их на экран — дописать сюда. Разово их можно
+ * открыть и сейчас: ?format=landscape, ?lang=en в адресе.
+ */
+const OFFERED_FORMATS: Format[] = ['portrait']
+const OFFERED_LANGUAGES: Language[] = ['ru']
+
+/**
  * Первый запуск: выбираем ориентацию панели и язык.
  *
  * Макета на этот экран нет — свёрстан в той же фирменной палитре, но
@@ -18,8 +27,14 @@ type SetupScreenProps = {
  * размеры считаются от меньшей стороны окна.
  */
 export function SetupScreen({ initial, onDone, onDiagnostics }: SetupScreenProps) {
-  const [format, setFormat] = useState<Format>(initial?.format ?? 'portrait')
-  const [language, setLanguage] = useState<Language>(initial?.language ?? 'ru')
+  // Сохранённый выбор подставляем, только если он есть на экране: иначе
+  // «Запустить» молча включил бы вариант, которого оператор не видит.
+  const [format, setFormat] = useState<Format>(
+    initial && OFFERED_FORMATS.includes(initial.format) ? initial.format : OFFERED_FORMATS[0],
+  )
+  const [language, setLanguage] = useState<Language>(
+    initial && OFFERED_LANGUAGES.includes(initial.language) ? initial.language : OFFERED_LANGUAGES[0],
+  )
 
   return (
     <div className={styles.screen}>
@@ -29,7 +44,7 @@ export function SetupScreen({ initial, onDone, onDiagnostics }: SetupScreenProps
         <section className={styles.section}>
           <h2 className={styles.label}>Ориентация экрана</h2>
           <div className={styles.options}>
-            {(Object.keys(FORMATS) as Format[]).map((key) => (
+            {OFFERED_FORMATS.map((key) => (
               <button
                 key={key}
                 type="button"
@@ -51,7 +66,7 @@ export function SetupScreen({ initial, onDone, onDiagnostics }: SetupScreenProps
         <section className={styles.section}>
           <h2 className={styles.label}>Язык</h2>
           <div className={styles.options}>
-            {(Object.keys(LANGUAGES) as Language[]).map((key) => (
+            {OFFERED_LANGUAGES.map((key) => (
               <button
                 key={key}
                 type="button"
@@ -63,7 +78,6 @@ export function SetupScreen({ initial, onDone, onDiagnostics }: SetupScreenProps
               </button>
             ))}
           </div>
-          <p className={styles.hint}>Язык можно сменить круглой кнопкой в углу приветствия.</p>
         </section>
 
         <div className={styles.buttons}>
