@@ -14,6 +14,7 @@ import { DiagScreen } from './screens/Diag/DiagScreen'
 import { LanguageProvider, TEXTS } from './i18n'
 import { quit } from './services/desktop'
 import { startSession, startStats, track } from './services/stats'
+import { beginGeneration, cancelGeneration, endGeneration, startGenerationStats } from './services/generations'
 
 import { generationConfig } from './services/kie'
 import styles from './App.module.css'
@@ -48,6 +49,7 @@ export function App() {
 
   useEffect(() => {
     startStats()
+    startGenerationStats()
     track('app', 'launch', { model: generationConfig.model, resolution: generationConfig.resolution })
   }, [])
 
@@ -67,6 +69,7 @@ export function App() {
 
   const openSetup = useCallback(() => {
     clearTimers()
+    cancelGeneration()
     generation.reset()
     setPhoto(null)
     setScreen('welcome')
@@ -80,6 +83,7 @@ export function App() {
   // поверх всего, закрыть его иначе нечем.
   useQuitGesture(useCallback(() => {
     track('app', 'quit')
+    cancelGeneration()
     void quit()
   }, []))
 
@@ -95,6 +99,9 @@ export function App() {
 
   const goToWelcome = useCallback(() => {
     clearTimers()
+    // После результата или ошибки генерация уже закрыта — тогда это ничего
+    // не делает. Иначе ушли посреди отрисовки: она «прервана».
+    cancelGeneration()
     generation.reset()
     setPhoto(null)
     setScreen('welcome')
@@ -114,7 +121,9 @@ export function App() {
       // Генерацию запускаем сразу, не дожидаясь смены экрана: загрузка кадра
       // на сервис идёт параллельно с тем, как человек смотрит на свой снимок.
       track('generation', 'start')
+      beginGeneration()
       void generation.start(shot, ({ ok, ms, reason }) => {
+        endGeneration(ok ? 'success' : `error:${reason ?? 'api'}`)
         if (ok) {
           track('generation', 'success', { ms })
           setScreen('result')

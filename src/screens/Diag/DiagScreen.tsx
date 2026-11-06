@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 
 import { apiRoute, generationConfig } from '../../services/kie'
 import { pendingCount } from '../../services/stats'
+import { pendingGenerations } from '../../services/generations'
 import { desktop } from '../../services/desktop'
 import styles from './DiagScreen.module.css'
 
@@ -74,8 +75,9 @@ const CHECKS: Check[] = [
     run: async () => {
       const t = Date.now()
       const r = await ping(`${RELAY}/health`)
-      const json = (await r.json()) as { shots?: number; heldMb?: number }
-      return `${json.shots ?? '?'} картинок, ${json.heldMb ?? '?'} МБ, ${Date.now() - t} мс`
+      const json = (await r.json()) as { shots?: number; heldMb?: number; stats?: string }
+      return `${json.shots ?? '?'} картинок, ${json.heldMb ?? '?'} МБ, `
+        + `база статистики: ${json.stats ?? 'не поддерживает'}, ${Date.now() - t} мс`
     },
   },
   {
@@ -119,7 +121,7 @@ export function DiagScreen({ onClose }: { onClose?: () => void }) {
 
   useEffect(() => {
     runAll()
-    void desktop.then((n) => setNative(n ? 'да, файл stats.csv пишется' : 'нет, журнал только в браузере'))
+    void desktop.then((n) => setNative(n ? 'да, файл generations.csv пишется' : 'нет, CSV не пишется (браузер)'))
 
     // Если фирменный шрифт не догрузился, webview берёт системный. Он шире,
     // и текст начинает вылезать за края плашек — по вёрстке это заметно
@@ -155,6 +157,7 @@ export function DiagScreen({ onClose }: { onClose?: () => void }) {
         <div><dt>Путь к API</dt><dd>{apiRoute() === 'direct' ? 'напрямую на api.kie.ai' : 'через свой сервер (api.kie.ai не отвечал)'}</dd></div>
         <div><dt>Адрес страницы</dt><dd>{RELAY}</dd></div>
         <div><dt>Статистика в очереди</dt><dd>{pendingCount()}</dd></div>
+        <div><dt>Генерации в очереди в базу</dt><dd>{pendingGenerations()}</dd></div>
         <div><dt>Приложение Neutralino</dt><dd>{native}</dd></div>
         <div><dt>Шрифт VK Sans Display</dt><dd>{font}</dd></div>
         <div><dt>Экран</dt><dd>{window.innerWidth} × {window.innerHeight}, dpr {window.devicePixelRatio}</dd></div>

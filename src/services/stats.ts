@@ -5,11 +5,10 @@
  * localStorage и только потом уходит в сеть. Если интернета нет,
  * очередь копится и разбирается пачкой, когда связь вернётся.
  *
- * Под Neutralino события дополнительно пишутся в `stats.csv` рядом с
- * приложением: файл можно забрать с панели и открыть чем угодно.
+ * Это события сценария (запуск, съёмка, экраны). Сводка по генерациям —
+ * номер, время, статус — ведётся отдельно, в CSV и в нашей базе:
+ * см. `generations.ts`.
  */
-
-import { filesystem } from './desktop'
 
 const ENDPOINT = import.meta.env.VITE_STATS_ENDPOINT ?? 'https://event-stats.alavenir.tech/api'
 /**
@@ -72,53 +71,6 @@ function write(key: string, value: unknown) {
   }
 }
 
-/**
- * Локальный журнал в CSV — на случай, если интернет отвалится совсем.
- * Файл лежит рядом с приложением, его можно забрать флешкой и открыть
- * чем угодно; localStorage для этого пришлось бы выковыривать из панели.
- *
- * Пишется только под Neutralino: в браузере файловой системы нет, там
- * остаётся журнал в localStorage (см. `localLog`).
- */
-const CSV_FILE = 'stats.csv'
-const CSV_HEADER = 'at,zone,zone_number,question,answer,user_id,meta\n'
-
-/** Экранирование по RFC 4180: кавычки удваиваются, спорное берётся в кавычки. */
-function csvCell(value: unknown): string {
-  const text = value === undefined || value === null ? '' : String(value)
-  return /[",\n\r]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text
-}
-
-/**
- * Пишем строго по одной строке за раз. Без очереди события, случившиеся
- * подряд, дописывались бы наперегонки, и строки могли перемешаться.
- */
-let writing: Promise<void> = Promise.resolve()
-let headerChecked = false
-
-function appendToFile(event: QueuedEvent) {
-  writing = writing.then(async () => {
-    const fs = await filesystem()
-    if (!fs) return
-
-    // Заголовок дописываем один раз и только если файла ещё нет, иначе он
-    // появлялся бы в середине после каждого перезапуска панели.
-    if (!headerChecked) {
-      headerChecked = true
-      const exists = await fs.readFile(CSV_FILE).then(() => true).catch(() => false)
-      if (!exists) await fs.appendFile(CSV_FILE, CSV_HEADER)
-    }
-
-    const row = [
-      event.at, event.zone, event.zone_number, event.question,
-      event.answer, event.user_id, event.meta ? JSON.stringify(event.meta) : '',
-    ].map(csvCell).join(',')
-    await fs.appendFile(CSV_FILE, row + '\n')
-  }).catch(() => {
-    // Диск недоступен — журнал в localStorage и отправка на сервер остаются.
-  })
-}
-
 let flushing = false
 let timer: number | undefined
 
@@ -176,7 +128,6 @@ export function track(question: string, answer: string, meta?: Record<string, un
   const log = read<QueuedEvent[]>(LOG_KEY, [])
   log.push(event)
   write(LOG_KEY, log.slice(-LOG_LIMIT))
-  appendToFile(event)
 
   write(QUEUE_KEY, [...read<QueuedEvent[]>(QUEUE_KEY, []), event])
   void flush()
