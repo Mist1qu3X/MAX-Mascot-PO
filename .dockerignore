@@ -1,4 +1,22 @@
-# В репозитории и так только server/ и sticker/ — исключать нечего.
-# Раньше здесь стоял белый список через `*`, но он исключал и сам Dockerfile.
+# Для сборки веб-версии нужны исходники, package*.json и конфиги.
+# Остальное — макеты, бинарники Neutralino, локальные сборки — образу ни к чему.
 .git
 .gitignore
+node_modules
+web
+dist
+bin
+.shots
+assets
+en-assets
+fonts
+avatar
+launcher
+tools
+*.tsbuildinfo
+.DS_Store
+
+# Локальные ключи в образ не попадают: на хостинге они приходят
+# аргументами сборки (Build-time Arguments в Dokploy).
+.env
+.env.*
