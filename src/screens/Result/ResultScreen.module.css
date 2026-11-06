@@ -20,13 +20,9 @@
 
 .copy {
   position: relative;
-  padding: calc(var(--y-logo) * var(--u)) var(--pad-x) 0;
+  padding: calc(var(--y-top) * var(--u)) var(--pad-x) 0;
 }
 
-.logo {
-  width: calc(788 * var(--u));
-  height: calc(250 * var(--u));
-}
 
 .line {
   display: block;
@@ -34,30 +30,43 @@
 }
 
 .title {
-  margin: calc(var(--gap-title) * var(--u)) 0 0;
-  font-size: calc(var(--fz-title) * var(--u));
-  line-height: calc(var(--lh-title) * var(--u));
+  margin: 0;
+  font-size: calc(var(--fz-title-v) * var(--u));
+  line-height: calc(var(--lh-title-v) * var(--u));
   font-weight: var(--fw-title);
 }
 
-/* --- Карточка с маскотом --------------------------------------------- */
+/* --- Круг с маскотом ------------------------------------------------- */
 
-.card {
+/*
+ * Сам круг — 1728 (864 в 1x), на месте прежней квадратной карточки:
+ * левый верхний угол в (216, 1170). Кольцо лежит снаружи круга, как обводка
+ * outside в макете, поэтому коробка шире круга на два кольца и сдвинута
+ * на одно влево и вверх.
+ *
+ * Низ круга уходит под плашку с QR и срезается по её нижнему краю — ниже
+ * плашки кольца в макете нет. Срез 80 = низ кольца (1154 + 1760 = 2914)
+ * минус низ плашки (2834).
+ */
+.ring {
   position: absolute;
-  left: var(--pad-x);
-  top: calc(1170 * var(--u));
-  width: calc(1728 * var(--u));
-  height: calc(1648 * var(--u));
-  padding: calc(var(--preview-border) * var(--u));
-  border-radius: calc((var(--card-radius) + var(--preview-border)) * var(--u));
-  background: linear-gradient(180deg, #8f02ff 0%, #1a87ff 100%);
+  left: calc((216 - var(--mascot-ring)) * var(--u));
+  top: calc((1170 - var(--mascot-ring)) * var(--u));
+  width: calc((1728 + 2 * var(--mascot-ring)) * var(--u));
+  height: calc((1728 + 2 * var(--mascot-ring)) * var(--u));
+  padding: calc(var(--mascot-ring) * var(--u));
+  border-radius: 50%;
+  /* Цвета те же, что у рамки камеры, но градиент повёрнут на 20°:
+     в макете левый бок кольца заметно синее правого. */
+  background: linear-gradient(200deg, #8f02ff 0%, #1a87ff 100%);
+  clip-path: inset(0 0 calc(80 * var(--u)) 0);
 }
 
-.inner {
+.circle {
   position: relative;
   width: 100%;
   height: 100%;
-  border-radius: calc(var(--card-radius) * var(--u));
+  border-radius: 50%;
   background: var(--c-void);
   overflow: hidden;
 }
@@ -70,12 +79,13 @@
   object-fit: cover;
 }
 
-/* Белая плашка с QR прижата к низу карточки. */
+/* Белая плашка с QR поверх низа круга. По краям — там же, где была внутри
+   карточки (216 + 8 рамки + 24 отступа = 248), низ на 2834. */
 .qrCard {
   position: absolute;
-  left: calc(var(--qr-card-inset) * var(--u));
-  right: calc(var(--qr-card-inset) * var(--u));
-  bottom: calc(var(--qr-card-inset) * var(--u));
+  left: calc(248 * var(--u));
+  right: calc(248 * var(--u));
+  top: calc(2308 * var(--u));
   display: flex;
   align-items: center;
   gap: calc(var(--qr-gap) * var(--u));
@@ -100,22 +110,6 @@
   line-height: calc(var(--lh-qr) * var(--u));
   font-weight: var(--fw-qr);
   color: #000;
-}
-
-/* Что делать дальше. Живёт на тёмной плашке над приглашением: на светлом
-   градиенте под карточкой белый текст не читается. Инструкция нужна именно
-   здесь — на телефон по QR уезжает только картинка, без подсказок. */
-.steps {
-  position: absolute;
-  left: var(--pad-x);
-  right: var(--pad-x);
-  top: calc(var(--y-steps) * var(--u)); /* от верха плашки */
-  margin: 0;
-  font-size: calc(var(--fz-steps) * var(--u));
-  line-height: calc(var(--lh-steps) * var(--u));
-  font-weight: var(--fw-lead);
-  text-align: center;
-  color: rgb(255 255 255 / 0.6);
 }
 
 /* --- Нижняя плашка --------------------------------------------------- */

@@ -24,13 +24,9 @@
 
 .copy {
   position: relative;
-  padding: calc(var(--y-logo) * var(--u)) var(--pad-x) 0;
+  padding: calc(var(--y-top) * var(--u)) var(--pad-x) 0;
 }
 
-.logo {
-  width: calc(788 * var(--u));
-  height: calc(250 * var(--u));
-}
 
 .line {
   display: block;
@@ -38,9 +34,9 @@
 }
 
 .title {
-  margin: calc(var(--gap-title) * var(--u)) 0 0;
-  font-size: calc(var(--fz-title) * var(--u));
-  line-height: calc(var(--lh-title) * var(--u));
+  margin: 0;
+  font-size: calc(var(--fz-title-v) * var(--u));
+  line-height: calc(var(--lh-title-v) * var(--u));
   font-weight: var(--fw-title);
 }
 

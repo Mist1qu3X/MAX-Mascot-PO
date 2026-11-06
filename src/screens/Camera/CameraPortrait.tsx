@@ -1,5 +1,4 @@
 import arrowSrc from '../../assets/arrow-up.png'
-import logoSrc from '../../assets/max-logo.png'
 import type { CameraViewProps } from './CameraView'
 import { useTexts } from '../../i18n'
 import styles from './CameraPortrait.module.css'
@@ -12,7 +11,6 @@ export function CameraPortrait({ videoRef, mirrored, videoTransform, live, shot,
       <img className={styles.arrow} src={arrowSrc} alt="" draggable={false} />
 
       <div className={styles.copy}>
-        <img className={styles.logo} src={logoSrc} alt="MAX" draggable={false} />
         <h1 className={styles.title}>
           {t.cameraLook.map((line) => <span className={styles.line} key={line}>{line}</span>)}
         </h1>

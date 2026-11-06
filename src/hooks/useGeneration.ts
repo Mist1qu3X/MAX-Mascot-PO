@@ -97,6 +97,21 @@ export function useGeneration() {
       const rejected = () => verdict === 'reject'
 
       try {
+        // Режим без генерации (`npm run dev:mock`): кадр никуда не уходит.
+        // Сравнение с MODE сборщик вычисляет сам, и в обычной сборке ветка
+        // вместе с импортом выпадает целиком.
+        if (import.meta.env.MODE === 'mock') {
+          const { fakeGeneration } = await import('../services/mock')
+          const fake = await fakeGeneration(photoDataUrl, controller.signal)
+          if (controller.signal.aborted) return
+          setMascot(fake.mascot)
+          setSticker(fake.sticker)
+          finished.current = true
+          setState('done')
+          onFinish?.({ ok: true, ms: Date.now() - started })
+          return
+        }
+
         const { blobUrl, remoteUrl } = await generateMascot(photoDataUrl, {
           signal: controller.signal,
           onUpload: (imageUrl) => {

@@ -1,16 +1,12 @@
 import cardsSrc from '../../assets/mascot-cards-h.png'
-import logoSrc from '../../assets/max-logo.png'
-import { LangToggle } from '../../components/LangToggle/LangToggle'
 import { useTexts } from '../../i18n'
 import styles from './WelcomeLandscape.module.css'
 
 type WelcomeLandscapeProps = {
   onStart?: () => void
-  /** Смена языка круглой кнопкой в углу. */
-  onToggleLanguage?: () => void
 }
 
-export function WelcomeLandscape({ onStart, onToggleLanguage }: WelcomeLandscapeProps) {
+export function WelcomeLandscape({ onStart }: WelcomeLandscapeProps) {
   const t = useTexts()
 
   return (
@@ -30,15 +26,11 @@ export function WelcomeLandscape({ onStart, onToggleLanguage }: WelcomeLandscape
       {/* Карточки лежат под панелью — слева она их перекрывает. */}
       <img className={styles.cards} src={cardsSrc} alt="" draggable={false} />
 
-      {onToggleLanguage && <LangToggle onToggle={onToggleLanguage} />}
-
       <div className={styles.panel}>
-        <img className={styles.logo} src={logoSrc} alt="MAX" draggable={false} />
-
         <h1 className={styles.title}>
           {t.welcomeTitle.map((line) => <span className={styles.line} key={line}>{line}</span>)}
           <span className={styles.accent}>
-            {t.welcomeAccent.map((line) => <span className={styles.line} key={line}>{line}</span>)}
+            {t.welcomeAccentWide.map((line) => <span className={styles.line} key={line}>{line}</span>)}
           </span>
         </h1>
 

@@ -314,8 +314,11 @@ const server = createServer(async (req, res) => {
       const type = match[1]
       const id = store(Buffer.from(match[2], 'base64'), type)
       const file = `/i/${id}.${EXT[type] ?? 'jpg'}`
-      const origin = publicOrigin()
-      send(res, 200, JSON.stringify({ url: origin ? `${origin}${file}` : null, image: file }),
+      // Ссылку отдаём, только если сервер публичный. Локальный адрес вида
+      // http://192.168.x.x:8787 kie.ai из интернета не скачает, и генерация
+      // встала бы на первом шаге. На `null` панель грузит кадр в хранилище
+      // kie.ai сама — так и было до появления этого маршрута.
+      send(res, 200, JSON.stringify({ url: PUBLIC_URL ? `${PUBLIC_URL}${file}` : null, image: file }),
         { 'content-type': 'application/json' })
     } catch (error) {
       send(res, 400, JSON.stringify({ error: String(error) }), { 'content-type': 'application/json' })
@@ -445,6 +448,21 @@ const server = createServer(async (req, res) => {
       'content-disposition': 'inline',
       'cache-control': 'public, max-age=3600',
     })
+  }
+
+  // Шрифт страницы — VK Sans Display, как на панели. Без него телефон
+  // подставит системный, и страница разойдётся с макетом. Имя файла —
+  // только буквы, цифры и дефис: выйти за пределы sticker/fonts нельзя.
+  const font = req.method === 'GET' && url.pathname.match(/^\/fonts\/([\w-]+\.woff2)$/)
+  if (font) {
+    try {
+      return send(res, 200, await readFile(join(ROOT, 'sticker', 'fonts', font[1])), {
+        'content-type': 'font/woff2',
+        'cache-control': 'public, max-age=86400',
+      })
+    } catch {
+      return send(res, 404, 'не найдено')
+    }
   }
 
   if (req.method === 'GET' && (url.pathname === '/' || url.pathname === '/index.html')) {

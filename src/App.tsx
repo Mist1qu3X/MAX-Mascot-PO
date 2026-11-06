@@ -55,19 +55,15 @@ export function App() {
     if (settings) applyFormat(settings.format)
   }, [settings])
 
+  // Без генерации #result сразу показывает готовый образец: иначе экран
+  // результата открывался бы пустым — ни маскота, ни QR.
+  const startGeneration = generation.start
+  useEffect(() => {
+    if (import.meta.env.MODE === 'mock' && initialScreen() === 'result') void startGeneration('')
+  }, [startGeneration])
+
   const language = settings?.language ?? 'ru'
   const texts = TEXTS[language]
-
-  /** Круглая кнопка в углу приветствия. Выбор запоминается до перезапуска. */
-  const toggleLanguage = useCallback(() => {
-    setSettings((current) => {
-      if (!current) return current
-      const next = { ...current, language: current.language === 'ru' ? ('en' as const) : ('ru' as const) }
-      saveSettings(next)
-      track('language', next.language)
-      return next
-    })
-  }, [])
 
   const openSetup = useCallback(() => {
     clearTimers()
@@ -177,11 +173,7 @@ export function App() {
     <LanguageProvider value={language}>
       <Stage>
         {screen === 'welcome' && (
-          <WelcomeScreen
-            format={settings.format}
-            onStart={handleStart}
-            onToggleLanguage={toggleLanguage}
-          />
+          <WelcomeScreen format={settings.format} onStart={handleStart} />
         )}
 
         {/* Экран съёмки остаётся смонтированным под панелью прогресса:

@@ -31,15 +31,11 @@
      у английского заголовок в две строки вместо четырёх, и при верхней
      привязке весь блок уезжал вверх на 424 px макета. При русских четырёх
      строках эта привязка даёт ровно прежние координаты — сверено наложением. */
-  padding: calc(var(--y-logo) * var(--u)) var(--pad-x) calc(293 * var(--u));
+  padding: calc(var(--y-top) * var(--u)) var(--pad-x) calc(293 * var(--u));
   border-radius: 0 calc(var(--sky-radius) * var(--u)) calc(var(--sky-radius) * var(--u)) 0;
   background: var(--grad-panel-h);
 }
 
-.logo {
-  width: calc(788 * var(--u));
-  height: calc(250 * var(--u));
-}
 
 .line {
   display: block;

@@ -1,4 +1,3 @@
-import logoSrc from '../../assets/max-logo.png'
 import type { CameraViewProps } from './CameraView'
 import { useTexts } from '../../i18n'
 import styles from './CameraLandscape.module.css'
@@ -9,10 +8,8 @@ export function CameraLandscape({ videoRef, mirrored, videoTransform, live, shot
 
   return (
     <div className={styles.screen}>
-      <img className={styles.logo} src={logoSrc} alt="MAX" draggable={false} />
-
       <h1 className={styles.title}>
-        {t.cameraLook.map((line) => <span className={styles.line} key={line}>{line}</span>)}
+        {t.cameraLookWide.map((line) => <span className={styles.line} key={line}>{line}</span>)}
       </h1>
 
       <div className={styles.preview}>

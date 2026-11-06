@@ -15,23 +15,21 @@
   top: 0;
   width: calc(1904 * var(--u));
   height: 100%;
-  padding: calc(var(--y-logo) * var(--u)) var(--pad-x) 0;
+  padding: calc(var(--y-top) * var(--u)) var(--pad-x) 0;
   border-radius: 0 calc(var(--sky-radius) * var(--u)) calc(var(--sky-radius) * var(--u)) 0;
   background: var(--grad-panel-result-h);
 }
 
-.logo {
-  width: calc(788 * var(--u));
-  height: calc(250 * var(--u));
-}
 
 .line {
   display: block;
   white-space: nowrap;
 }
 
+/* Логотипа над заголовком больше нет, но сам заголовок стоит, где стоял:
+   884 = 250 высоты логотипа + 634 прежнего отступа под ним. */
 .title {
-  margin: calc(634 * var(--u)) 0 0;
+  margin: calc(884 * var(--u)) 0 0;
   font-size: calc(var(--fz-title) * var(--u));
   line-height: calc(var(--lh-title) * var(--u));
   font-weight: var(--fw-title);
@@ -44,24 +42,32 @@
   font-weight: var(--fw-cta);
 }
 
-/* --- Карточка с маскотом --------------------------------------------- */
+/* --- Круг с маскотом ------------------------------------------------- */
 
-.card {
+/*
+ * Макета на горизонталь нет — геометрия перенесена с вертикали. Круг
+ * шириной с прежнюю карточку (1576), кольцо снаружи. Плашка с QR осталась
+ * на старом месте, круг стоит так, чтобы уходить под неё на те же 64, что
+ * и в вертикали: верх 242 = 1754 (низ плашки) + 64 − 1576. Срез низа —
+ * тоже 80, как в вертикали.
+ */
+.ring {
   position: absolute;
-  left: calc(2048 * var(--u));
-  top: calc(106 * var(--u));
-  width: calc(1576 * var(--u));
-  height: calc(1680 * var(--u));
-  padding: calc(var(--preview-border) * var(--u));
-  border-radius: calc((var(--card-radius) + var(--preview-border)) * var(--u));
-  background: linear-gradient(180deg, #8f02ff 0%, #1a87ff 100%);
+  left: calc((2048 - var(--mascot-ring)) * var(--u));
+  top: calc((242 - var(--mascot-ring)) * var(--u));
+  width: calc((1576 + 2 * var(--mascot-ring)) * var(--u));
+  height: calc((1576 + 2 * var(--mascot-ring)) * var(--u));
+  padding: calc(var(--mascot-ring) * var(--u));
+  border-radius: 50%;
+  background: linear-gradient(200deg, #8f02ff 0%, #1a87ff 100%);
+  clip-path: inset(0 0 calc(80 * var(--u)) 0);
 }
 
-.inner {
+.circle {
   position: relative;
   width: 100%;
   height: 100%;
-  border-radius: calc(var(--card-radius) * var(--u));
+  border-radius: 50%;
   background: var(--c-void);
   overflow: hidden;
 }
@@ -74,11 +80,13 @@
   object-fit: cover;
 }
 
+/* Там же, где была внутри карточки: 2048 + 8 рамки + 24 отступа = 2080
+   слева, 248 от правого края экрана, низ на 1754. */
 .qrCard {
   position: absolute;
-  left: calc(var(--qr-card-inset) * var(--u));
-  right: calc(var(--qr-card-inset) * var(--u));
-  bottom: calc(var(--qr-card-inset) * var(--u));
+  left: calc(2080 * var(--u));
+  right: calc(248 * var(--u));
+  top: calc(1228 * var(--u));
   display: flex;
   align-items: center;
   gap: 0;

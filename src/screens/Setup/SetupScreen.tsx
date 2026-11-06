@@ -1,6 +1,5 @@
 import { useState } from 'react'
 
-import logoSrc from '../../assets/max-logo.png'
 import { FORMATS, LANGUAGES, type Format, type Language, type Settings } from '../../format'
 import styles from './SetupScreen.module.css'
 
@@ -25,7 +24,6 @@ export function SetupScreen({ initial, onDone, onDiagnostics }: SetupScreenProps
   return (
     <div className={styles.screen}>
       <div className={styles.sheet}>
-        <img className={styles.logo} src={logoSrc} alt="MAX" draggable={false} />
         <h1 className={styles.title}>Настройка панели</h1>
 
         <section className={styles.section}>

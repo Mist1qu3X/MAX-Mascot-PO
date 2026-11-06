@@ -19,6 +19,12 @@ import type { Language } from './format'
 type Texts = {
   welcomeTitle: string[]
   welcomeAccent: string[]
+  /**
+   * Заголовки в вертикали крупнее (256 против 220), и английские строки
+   * там переносятся чаще. В горизонтали они сверены со своими макетами —
+   * поэтому у горизонтали свои версии, с суффиксом Wide.
+   */
+  welcomeAccentWide: string[]
   welcomeLead: string[]
   /**
    * В горизонтали подводка своя: и переносы другие, и обращение на «вы»
@@ -29,6 +35,7 @@ type Texts = {
   welcomeAria: string
 
   cameraLook: string[]
+  cameraLookWide: string[]
   cameraStarting: string
   cameraDenied: string
   cameraMissing: string
@@ -51,12 +58,14 @@ type Texts = {
 const ru: Texts = {
   welcomeTitle: ['Создайте', 'своего'],
   welcomeAccent: ['цифрового', 'маскота'],
-  welcomeLead: ['Сделай фото — а нейросеть', 'MAX превратит тебя', 'в фирменного персонажа'],
-  welcomeLeadWide: ['Сделайте фото — а нейросеть', 'MAX превратит вас в фирменного', 'персонажа'],
+  welcomeAccentWide: ['цифрового', 'маскота'],
+  welcomeLead: ['Сделайте фото и получите свой', 'образ в виде фирменного', 'персонажа'],
+  welcomeLeadWide: ['Сделайте фото и получите свой', 'образ в виде фирменного', 'персонажа'],
   welcomeCta: ['Коснитесь экрана,', 'чтобы начать'],
   welcomeAria: 'Коснитесь экрана, чтобы начать',
 
   cameraLook: ['Смотрите', 'в камеру'],
+  cameraLookWide: ['Смотрите', 'в камеру'],
   cameraStarting: 'Включаем камеру…',
   cameraDenied: 'Нет доступа к камере.\nРазрешите съёмку в настройках панели.',
   cameraMissing: 'Камера не найдена.\nПроверьте подключение.',
@@ -66,7 +75,7 @@ const ru: Texts = {
   loadingOverdue: 'Осталось совсем\nнемного…',
 
   resultTitle: ['Ваш маскот', 'готов!'],
-  resultQr: ['Сканируйте, чтобы', 'скачать стикер в MAX'],
+  resultQr: ['Сканируйте, чтобы', 'скачать маскота', 'и установить аватар', 'для мессенджера MAX'],
   resultStepsPage: ['На странице — кнопка «Сохранить»', 'и пошаговая инструкция для бота'],
   resultStepsRaw: ['Удерживайте картинку, чтобы сохранить.', 'Затем загрузите её в бот «Стикеры в MAX»'],
   resultCta: ['Коснитесь экрана,', 'чтобы начать снова'],
@@ -88,13 +97,16 @@ const en: Texts = {
   // и число строк: у английского оно другое, чем у русского. Кавычки в
   // «Stickers in MAX» тоже как в макете — типографские, не прямые.
   welcomeTitle: ['Create your'],
-  welcomeAccent: ['digital mascot'],
-  welcomeLead: ['Take a photo — and the MAX neural', 'network will turn you into a brand', 'character'],
-  welcomeLeadWide: ['Take a photo — and the MAX neural', 'network will turn you into a brand', 'character'],
+  welcomeAccent: ['digital', 'mascot'],
+  welcomeAccentWide: ['digital mascot'],
+  welcomeLead: ['Take a photo and get your own', 'look as a brand character'],
+  welcomeLeadWide: ['Take a photo and get your own', 'look as a brand character'],
   welcomeCta: ['Tap the screen to start'],
   welcomeAria: 'Tap the screen to start',
 
-  cameraLook: ['Look at the', 'camera'],
+  // В три строки: «Look at the» на 256 наезжала на стрелку к камере.
+  cameraLook: ['Look', 'at the', 'camera'],
+  cameraLookWide: ['Look at the', 'camera'],
   cameraStarting: 'Starting the camera…',
   cameraDenied: 'No access to the camera.\nAllow it in the panel settings.',
   cameraMissing: 'Camera not found.\nCheck the connection.',
@@ -104,7 +116,7 @@ const en: Texts = {
   loadingOverdue: 'Almost there…',
 
   resultTitle: ['Your mascot', 'is ready!'],
-  resultQr: ['Scan to download', 'the sticker in MAX'],
+  resultQr: ['Scan to download', 'your mascot and set', 'it as your avatar', 'in the MAX messenger'],
   resultStepsPage: ['Create a sticker via the \u201cStickers in', 'MAX\u201d bot'],
   // Запасной путь макетом не покрыт: он включается, только когда недоступна
   // страница-посредник. Здесь важнее сказать, что делать, чем совпасть.

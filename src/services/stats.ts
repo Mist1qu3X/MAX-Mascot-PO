@@ -12,7 +12,11 @@
 import { filesystem } from './desktop'
 
 const ENDPOINT = import.meta.env.VITE_STATS_ENDPOINT ?? 'https://event-stats.alavenir.tech/api'
-const API_KEY = import.meta.env.VITE_STATS_API_KEY ?? ''
+/**
+ * В режиме без генерации (`npm run dev:mock`) на сервер ничего не уходит:
+ * прогоны при правке вёрстки — не посетители. Локальный журнал остаётся.
+ */
+const API_KEY = import.meta.env.MODE === 'mock' ? '' : (import.meta.env.VITE_STATS_API_KEY ?? '')
 
 const ZONE = 'max_digital_maskot'
 const ZONE_NUMBER = 1

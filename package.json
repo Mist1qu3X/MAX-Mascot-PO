@@ -6,6 +6,7 @@
   "description": "MAX — приложение для тач-панели (веб-версия, позже — сборка в Neutralino)",
   "scripts": {
     "dev": "vite",
+    "dev:mock": "vite --mode mock",
     "build": "tsc -b && vite build",
     "preview": "vite preview --port 4173",
     "sticker": "node server/index.mjs",

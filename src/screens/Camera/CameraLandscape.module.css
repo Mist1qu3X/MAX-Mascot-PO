@@ -8,13 +8,6 @@
   background: var(--grad-sky-camera-h);
 }
 
-.logo {
-  position: absolute;
-  left: var(--pad-x);
-  top: calc(var(--y-logo) * var(--u));
-  width: calc(788 * var(--u));
-  height: calc(250 * var(--u));
-}
 
 .line {
   display: block;

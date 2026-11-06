@@ -12,13 +12,9 @@
 
 .copy {
   position: relative;
-  padding: calc(var(--y-logo) * var(--u)) var(--pad-x) 0;
+  padding: calc(var(--y-top) * var(--u)) var(--pad-x) 0;
 }
 
-.logo {
-  width: calc(788 * var(--u));
-  height: calc(250 * var(--u));
-}
 
 .line {
   display: block;
@@ -26,19 +22,22 @@
 }
 
 .title {
-  margin: calc(var(--gap-title) * var(--u)) 0 0;
-  font-size: calc(var(--fz-title) * var(--u));
-  line-height: calc(var(--lh-title) * var(--u));
+  margin: 0;
+  font-size: calc(var(--fz-title-v) * var(--u));
+  line-height: calc(var(--lh-title-v) * var(--u));
   font-weight: var(--fw-title);
 }
 
-/* Стрелка «камера вон там» — указывает на объектив над панелью. */
+/* Стрелка «камера вон там» — указывает на объектив над панелью. Заголовок
+   стоит наверху, поэтому стрелка короче исходной картинки (302 × 900):
+   рамка снята с макета по острию, правому краю дуги и хвосту — хвост
+   у конца строки «в камеру», остриё у верхнего края экрана. */
 .arrow {
   position: absolute;
-  left: calc(1297 * var(--u));
-  top: calc(89 * var(--u));
-  width: calc(302 * var(--u));
-  height: calc(900 * var(--u));
+  left: calc(1451 * var(--u));
+  top: calc(78 * var(--u));
+  width: calc(207 * var(--u));
+  height: calc(577 * var(--u));
   pointer-events: none;
 }
 

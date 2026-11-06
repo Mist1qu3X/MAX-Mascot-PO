@@ -35,10 +35,6 @@
   gap: calc(3 * var(--s));
 }
 
-.logo {
-  width: calc(18 * var(--s));
-  height: auto;
-}
 
 .title {
   margin: 0;

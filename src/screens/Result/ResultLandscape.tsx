@@ -1,4 +1,3 @@
-import logoSrc from '../../assets/max-logo.png'
 import { MascotImage } from '../../components/MascotImage/MascotImage'
 import { QrCode } from '../../components/QrCode/QrCode'
 import { useFitText } from '../../hooks/useFitText'
@@ -36,8 +35,6 @@ export function ResultLandscape({ mascot, mascotBackup, qrValue, viaPage, onRest
       }}
     >
       <div className={styles.panel}>
-        <img className={styles.logo} src={logoSrc} alt="MAX" draggable={false} />
-
         <h1 className={styles.title}>
           {t.resultTitle.map((line) => <span className={styles.line} key={line}>{line}</span>)}
         </h1>
@@ -47,8 +44,10 @@ export function ResultLandscape({ mascot, mascotBackup, qrValue, viaPage, onRest
         </p>
       </div>
 
-      <div className={styles.card}>
-        <div className={styles.inner}>
+      {/* Плашка с QR — соседка круга, а не вложена в него: круглая маска
+          обрезала бы её по дуге. */}
+      <div className={styles.ring}>
+        <div className={styles.circle}>
           {mascot && (
             <MascotImage
               className={styles.mascot}
@@ -57,14 +56,14 @@ export function ResultLandscape({ mascot, mascotBackup, qrValue, viaPage, onRest
               alt={t.mascotAlt}
             />
           )}
-
-          <div className={styles.qrCard}>
-            <QrCode className={styles.qr} value={qrValue ?? ''} />
-            <p className={styles.qrText} ref={qrText}>
-              {t.resultQr.map((line) => <span className={styles.line} key={line}>{line}</span>)}
-            </p>
-          </div>
         </div>
+      </div>
+
+      <div className={styles.qrCard}>
+        <QrCode className={styles.qr} value={qrValue ?? ''} />
+        <p className={styles.qrText} ref={qrText}>
+          {t.resultQr.map((line) => <span className={styles.line} key={line}>{line}</span>)}
+        </p>
       </div>
 
       <p className={styles.caption}>{(viaPage ? t.resultStepsPage : t.resultStepsRaw).map((line) => (
