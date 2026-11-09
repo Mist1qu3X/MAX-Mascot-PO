@@ -17,7 +17,30 @@ export const LANGUAGES: Record<Language, string> = {
   en: 'English',
 }
 
-export type Settings = { format: Format; language: Language }
+/**
+ * Масштаб камеры: 1 — весь кадр, больше — ближе (по бокам и снизу режется
+ * лишнее, сверху — нет: голова в верхней части кадра). Раньше был зашит
+ * ×1,67 под широкоугольную камеру; теперь оператор подбирает его на месте,
+ * на экране настройки, глядя на живое превью.
+ */
+export const CAMERA_ZOOM = { min: 1, max: 2, step: 0.1, initial: 1 }
+
+export function clampZoom(value: unknown): number {
+  const zoom = Number(value)
+  if (!Number.isFinite(zoom)) return CAMERA_ZOOM.initial
+  // Округляем до шага: из хранилища не должно приезжать ×1,2999999.
+  const stepped = Math.round(zoom / CAMERA_ZOOM.step) * CAMERA_ZOOM.step
+  return Math.min(Math.max(Number(stepped.toFixed(2)), CAMERA_ZOOM.min), CAMERA_ZOOM.max)
+}
+
+export type Settings = {
+  format: Format
+  language: Language
+  cameraZoom: number
+  /** Выбранная камера: id от браузера и имя устройства — на случай, если id сменится. */
+  cameraId?: string
+  cameraLabel?: string
+}
 
 const KEY = 'max.settings'
 
@@ -28,7 +51,13 @@ export function readSettings(): Settings | null {
     if (!raw) return null
     const parsed = JSON.parse(raw) as Partial<Settings>
     if (!parsed.format || !FORMATS[parsed.format]?.ready) return null
-    return { format: parsed.format, language: parsed.language ?? 'ru' }
+    return {
+      format: parsed.format,
+      language: parsed.language ?? 'ru',
+      cameraZoom: clampZoom(parsed.cameraZoom),
+      cameraId: typeof parsed.cameraId === 'string' ? parsed.cameraId : undefined,
+      cameraLabel: typeof parsed.cameraLabel === 'string' ? parsed.cameraLabel : undefined,
+    }
   } catch {
     return null
   }
@@ -59,7 +88,13 @@ export function loadSettings(): Settings | null {
   const language = forcedLang && LANGUAGES[forcedLang] ? forcedLang : saved?.language ?? 'ru'
 
   if (!format) return null
-  return { format, language }
+  return {
+    format,
+    language,
+    cameraZoom: saved?.cameraZoom ?? CAMERA_ZOOM.initial,
+    cameraId: saved?.cameraId,
+    cameraLabel: saved?.cameraLabel,
+  }
 }
 
 export function saveSettings(settings: Settings) {

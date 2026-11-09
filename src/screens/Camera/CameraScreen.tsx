@@ -1,20 +1,11 @@
 import { useCallback, useState } from 'react'
 
 import type { Format } from '../../format'
-import { cropTransform, useCamera } from '../../hooks/useCamera'
+import { MIRRORED, PREVIEW_ASPECT, cropTransform, useCamera } from '../../hooks/useCamera'
 import { useTexts } from '../../i18n'
 import { useCountdown } from '../../hooks/useCountdown'
 import { CameraLandscape } from './CameraLandscape'
 import { CameraPortrait } from './CameraPortrait'
-
-/** Соотношение сторон окна превью в каждом формате — по нему кадрируется снимок. */
-const PREVIEW_ASPECT: Record<Format, number> = {
-  portrait: 1712 / 1848,
-  landscape: 2102 / 1664,
-}
-
-/** Превью зеркалим — так привычнее; кадр снимаем таким же, каким его видели. */
-const MIRRORED = true
 
 /**
  * Пять секунд, а не три как в макете: посетителю нужно успеть встать в кадр
@@ -25,13 +16,18 @@ const COUNTDOWN_FROM = 5
 
 type CameraScreenProps = {
   format: Format
+  /** Масштаб камеры из настроек: 1 — весь кадр. */
+  zoom: number
+  /** Камера из настроек; не задана или не нашлась — любая рабочая. */
+  cameraId?: string
+  cameraLabel?: string
   /** Готовый кадр в формате data:image/jpeg. */
   onCapture?: (photo: string) => void
 }
 
-export function CameraScreen({ format, onCapture }: CameraScreenProps) {
+export function CameraScreen({ format, zoom, cameraId, cameraLabel, onCapture }: CameraScreenProps) {
   const t = useTexts()
-  const { videoRef, status, capture } = useCamera()
+  const { videoRef, status, capture } = useCamera({ deviceId: cameraId, deviceLabel: cameraLabel })
 
   // Внутри компонента, а не константой модуля: тексты зависят от языка.
   const statusMessage: Record<string, string> = {
@@ -43,11 +39,11 @@ export function CameraScreen({ format, onCapture }: CameraScreenProps) {
   const [shot, setShot] = useState<string | null>(null)
 
   const handleDone = useCallback(() => {
-    const photo = capture(PREVIEW_ASPECT[format], MIRRORED)
+    const photo = capture(PREVIEW_ASPECT[format], MIRRORED, zoom)
     if (!photo) return
     setShot(photo)
     onCapture?.(photo)
-  }, [capture, format, onCapture])
+  }, [capture, format, onCapture, zoom])
 
   // Отсчёт стартует только когда пошёл живой кадр, а не при открытии экрана.
   const count = useCountdown({
@@ -59,7 +55,7 @@ export function CameraScreen({ format, onCapture }: CameraScreenProps) {
   const view = {
     videoRef,
     mirrored: MIRRORED,
-    videoTransform: cropTransform(MIRRORED),
+    videoTransform: cropTransform(MIRRORED, zoom),
     live: status === 'ready' && shot === null,
     shot,
     message: statusMessage[status],

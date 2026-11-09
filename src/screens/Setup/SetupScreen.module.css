@@ -139,6 +139,110 @@
   color: rgb(255 255 255 / 0.45);
 }
 
+/* --- Масштаб камеры: живое превью и кнопки ------------------------- */
+
+.camera {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: calc(3 * var(--s));
+}
+
+/* Окно тех же пропорций, что на экране съёмки (aspect-ratio — инлайном). */
+.camPreview {
+  position: relative;
+  flex: 0 0 calc(40 * var(--s));
+  max-width: 360px;
+  overflow: hidden;
+  border: calc(0.35 * var(--s)) solid rgb(255 255 255 / 0.16);
+  border-radius: calc(2.4 * var(--s));
+  background: var(--c-void);
+}
+
+/* Как .video на экране съёмки: cover, а обрезка и зеркало — инлайном. */
+.camVideo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.camMessage {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: calc(2 * var(--s));
+  text-align: center;
+  font-size: calc(2.1 * var(--s));
+  color: rgb(255 255 255 / 0.6);
+}
+
+.zoom {
+  flex: 1 1 calc(30 * var(--s));
+  display: flex;
+  flex-direction: column;
+  gap: calc(2 * var(--s));
+}
+
+.zoomRow {
+  display: flex;
+  align-items: center;
+  gap: calc(2.4 * var(--s));
+}
+
+.zoomButton {
+  width: calc(10 * var(--s));
+  height: calc(10 * var(--s));
+  border: calc(0.35 * var(--s)) solid rgb(255 255 255 / 0.24);
+  border-radius: 50%;
+  background: rgb(255 255 255 / 0.08);
+  font: inherit;
+  font-size: calc(5 * var(--s));
+  line-height: 1;
+  color: #fff;
+}
+
+.zoomButton:disabled {
+  opacity: 0.3;
+}
+
+.zoomValue {
+  min-width: calc(12 * var(--s));
+  text-align: center;
+  font-size: calc(4.4 * var(--s));
+  font-weight: var(--fw-count);
+  font-variant-numeric: tabular-nums;
+}
+
+.zoomNote {
+  margin: 0;
+  font-size: calc(2 * var(--s));
+  line-height: 1.4;
+  color: rgb(255 255 255 / 0.5);
+}
+
+/* Имена камер бывают длинными («USB Video Device (0c45:6366)») — мельче
+   и с переносом, чтобы не распирали кнопку. */
+.cameraName {
+  font-size: calc(2.3 * var(--s));
+  font-weight: var(--fw-count);
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+/* Дословная причина отказа камеры — для того, кто будет разбираться. */
+.camError {
+  margin: 0;
+  font-size: calc(1.9 * var(--s));
+  line-height: 1.4;
+  color: #ff8a9a;
+  overflow-wrap: anywhere;
+}
+
 /* Служебная кнопка рядом с «Запустить» — визуально тише главной. */
 .buttons {
   display: flex;

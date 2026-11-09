@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 
+import { readSettings } from '../../format'
 import { apiRoute, generationConfig } from '../../services/kie'
 import { pendingCount } from '../../services/stats'
 import { pendingGenerations } from '../../services/generations'
@@ -91,13 +92,19 @@ const CHECKS: Check[] = [
   },
   {
     name: 'Камера',
-    hint: 'Съёмка не заработает: нет устройства или не выдано разрешение',
+    hint: 'Съёмка не заработает: нет устройства или не выдано разрешение. '
+      + 'Камеру можно выбрать на экране настройки — там же кнопка «Обновить список камер»',
     run: async () => {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true })
+      // Та камера, что выбрана в настройках; не нашлась — любая.
+      const saved = readSettings()
+      const cameras = (await navigator.mediaDevices.enumerateDevices()).filter((d) => d.kind === 'videoinput')
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: saved?.cameraId ? { deviceId: { ideal: saved.cameraId } } : true,
+      })
       const track = stream.getVideoTracks()[0]
       const { width, height } = track.getSettings()
       stream.getTracks().forEach((t) => t.stop())
-      return `${width} × ${height}`
+      return `${track.label || 'без имени'}, ${width} × ${height}; камер в системе: ${cameras.length}`
     },
   },
 ]

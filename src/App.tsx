@@ -149,7 +149,7 @@ export function App() {
   const applySettings = useCallback((next: Settings) => {
     saveSettings(next)
     setSettings(next)
-    track('setup', `${next.format}:${next.language}`)
+    track('setup', `${next.format}:${next.language}`, { cameraZoom: next.cameraZoom })
     if (window.location.hash === '#setup') window.location.hash = ''
   }, [])
 
@@ -189,7 +189,13 @@ export function App() {
             так в размытой подложке виден снятый кадр, а камера не перезапускается. */}
         {showsCamera && (
           <div className={screen === 'loading' ? `${styles.layer} ${styles.blurred}` : styles.layer}>
-            <CameraScreen format={settings.format} onCapture={handleCapture} />
+            <CameraScreen
+              format={settings.format}
+              zoom={settings.cameraZoom}
+              cameraId={settings.cameraId}
+              cameraLabel={settings.cameraLabel}
+              onCapture={handleCapture}
+            />
           </div>
         )}
 

@@ -1,7 +1,18 @@
 import { useState } from 'react'
 
-import { FORMATS, LANGUAGES, type Format, type Language, type Settings } from '../../format'
+import { CAMERA_ZOOM, FORMATS, LANGUAGES, clampZoom, type Format, type Language, type Settings } from '../../format'
+import { MIRRORED, PREVIEW_ASPECT, cropTransform, useCamera, type CameraDevice } from '../../hooks/useCamera'
 import styles from './SetupScreen.module.css'
+
+const CAMERA_PROBLEM: Record<string, string> = {
+  idle: 'Включаем камеру…',
+  starting: 'Включаем камеру…',
+  denied: 'Нет доступа к камере',
+  notfound: 'Камера не найдена',
+  error: 'Камера не отвечает',
+}
+
+const zoomLabel = (zoom: number) => `×${zoom.toFixed(1).replace('.', ',')}`
 
 type SetupScreenProps = {
   initial?: Settings
@@ -35,6 +46,24 @@ export function SetupScreen({ initial, onDone, onDiagnostics }: SetupScreenProps
   const [language, setLanguage] = useState<Language>(
     initial && OFFERED_LANGUAGES.includes(initial.language) ? initial.language : OFFERED_LANGUAGES[0],
   )
+  const [zoom, setZoom] = useState(() => clampZoom(initial?.cameraZoom ?? CAMERA_ZOOM.initial))
+  const [cameraId, setCameraId] = useState(initial?.cameraId ?? '')
+  const [cameraLabel, setCameraLabel] = useState(initial?.cameraLabel ?? '')
+  // Живое превью — та же камера, то же окно и та же обрезка, что на экране
+  // съёмки: что оператор видит здесь, то и попадёт в снимок.
+  const camera = useCamera({ deviceId: cameraId || undefined, deviceLabel: cameraLabel || undefined })
+  const changeZoom = (direction: 1 | -1) => setZoom((z) => clampZoom(z + direction * CAMERA_ZOOM.step))
+
+  const pickCamera = (device: CameraDevice) => {
+    setCameraId(device.deviceId)
+    setCameraLabel(device.label)
+  }
+  // Подсвечиваем ту камеру, что реально горит в превью: выбранная могла не
+  // найтись, и тогда работает другая — оператор должен это видеть.
+  const activeId = camera.status === 'ready'
+    ? camera.devices.find((d) => d.label && d.label === camera.activeLabel)?.deviceId
+    : undefined
+  const selectedId = activeId ?? cameraId
 
   return (
     <div className={styles.screen}>
@@ -80,8 +109,93 @@ export function SetupScreen({ initial, onDone, onDiagnostics }: SetupScreenProps
           </div>
         </section>
 
+        <section className={styles.section}>
+          <h2 className={styles.label}>Камера</h2>
+          {camera.devices.length > 0 && (
+            <div className={styles.options}>
+              {camera.devices.map((device, i) => (
+                <button
+                  key={device.deviceId}
+                  type="button"
+                  className={`${styles.option} ${styles.optionSlim}`}
+                  aria-pressed={device.deviceId === selectedId}
+                  onClick={() => pickCamera(device)}
+                >
+                  <span className={styles.cameraName}>{device.label || `Камера ${i + 1}`}</span>
+                </button>
+              ))}
+            </div>
+          )}
+          {camera.devices.length === 0 && camera.status !== 'starting' && (
+            <p className={styles.zoomNote}>
+              Система не видит ни одной камеры. Подключите её и нажмите «Обновить список камер».
+            </p>
+          )}
+          <div className={styles.buttons}>
+            <button type="button" className={styles.secondary} onClick={() => void camera.start()}>
+              Обновить список камер
+            </button>
+          </div>
+
+          <h2 className={styles.label}>Масштаб</h2>
+          <div className={styles.camera}>
+            <div className={styles.camPreview} style={{ aspectRatio: PREVIEW_ASPECT[format] }}>
+              <video
+                ref={camera.videoRef}
+                className={styles.camVideo}
+                style={{ transform: cropTransform(MIRRORED, zoom) }}
+                autoPlay
+                playsInline
+                muted
+              />
+              {camera.status !== 'ready' && <p className={styles.camMessage}>{CAMERA_PROBLEM[camera.status]}</p>}
+            </div>
+
+            <div className={styles.zoom}>
+              <div className={styles.zoomRow}>
+                <button
+                  type="button"
+                  className={styles.zoomButton}
+                  aria-label="Отдалить"
+                  disabled={zoom <= CAMERA_ZOOM.min}
+                  onClick={() => changeZoom(-1)}
+                >
+                  −
+                </button>
+                <span className={styles.zoomValue}>{zoomLabel(zoom)}</span>
+                <button
+                  type="button"
+                  className={styles.zoomButton}
+                  aria-label="Приблизить"
+                  disabled={zoom >= CAMERA_ZOOM.max}
+                  onClick={() => changeZoom(1)}
+                >
+                  +
+                </button>
+              </div>
+              <p className={styles.zoomNote}>
+                ×1 — весь кадр камеры. Больше — ближе: по бокам и снизу обрезается лишнее,
+                голова остаётся вверху. Снимок будет ровно таким, как в окне.
+              </p>
+            </div>
+          </div>
+          {camera.status !== 'ready' && camera.error && <p className={styles.camError}>{camera.error}</p>}
+        </section>
+
         <div className={styles.buttons}>
-          <button type="button" className={styles.start} onClick={() => onDone({ format, language })}>
+          <button
+            type="button"
+            className={styles.start}
+            onClick={() => onDone({
+              format,
+              language,
+              cameraZoom: zoom,
+              // Запоминаем ту камеру, что работала в превью, — её же возьмёт
+              // экран съёмки. Не включилась никакая — оставляем выбор как есть.
+              cameraId: selectedId || undefined,
+              cameraLabel: (activeId ? camera.activeLabel : cameraLabel) || undefined,
+            })}
+          >
             Запустить
           </button>
 
