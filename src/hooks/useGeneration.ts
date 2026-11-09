@@ -13,10 +13,11 @@ export type GenerationState = 'idle' | 'running' | 'done' | 'error'
  * была честнее, но ломалась заметнее: если запрос подвисал, шкала намертво
  * вставала на асимптоте своего этапа — те самые 12% на загрузке кадра.
  *
- * Теперь проще и предсказуемее: шкала едет по времени и доходит до конца за
- * минуту. Успели раньше — прыгает в 100% и уходит на результат. Не успели —
- * замирает у края, а подпись меняется на «осталось совсем немного», потому
- * что честнее сказать это словами, чем делать вид, что проценты ещё идут.
+ * Теперь шкала едет по времени, равномерно: 100% за FILL_MS. Успели
+ * раньше — доезжает до 100% и уходит на результат. Не успели — шкала
+ * останавливается на 99% (100% значит «готово»), и подпись меняется на
+ * «осталось совсем немного»: честнее сказать это словами, чем делать вид,
+ * что проценты ещё идут.
  */
 /**
  * Общий предел на весь цикл. У каждого запроса свой таймаут, но в сумме они
@@ -26,11 +27,20 @@ export type GenerationState = 'idle' | 'running' | 'done' | 'error'
  */
 const DEADLINE_MS = 180_000
 
+/** За столько шкала проходит от 0 до 100%, равномерно. */
 const FILL_MS = 60_000
-/** Выше этого без готовой картинки не поднимаемся: 100% значит «готово». */
+/**
+ * Выше этого без готовой картинки не поднимаемся: 100% значит «готово».
+ * Дошли сюда — подпись меняется на «осталось совсем немного».
+ */
 const CAP = 0.99
-/** Постоянная сглаживания показываемого значения. */
+/** Постоянная сглаживания последнего рывка к 100%. */
 const SMOOTH_MS = 220
+/**
+ * Мельче этого сдвиг не рисуем. Каждое обновление — перерисовка всего
+ * экрана с размытием в 4K, а десятая процента — это пара пикселей дуги.
+ */
+const MIN_STEP = 0.001
 
 export function useGeneration() {
   const [state, setState] = useState<GenerationState>('idle')
@@ -198,7 +208,7 @@ export function useGeneration() {
     [],
   )
 
-  // Шкала: цель считаем от времени, показываем сглаженно и только вперёд.
+  // Шкала: цель считаем от времени и показываем только вперёд.
   useEffect(() => {
     if (state !== 'running' && state !== 'done') return
     let raf = 0
@@ -209,14 +219,19 @@ export function useGeneration() {
       last = now
 
       const elapsed = Date.now() - startedAt.current
-      const target = finished.current ? 1 : Math.min(elapsed / FILL_MS, CAP)
-      if (!finished.current && elapsed > FILL_MS && !overdueSet.current) {
+      const done = finished.current
+      const target = done ? 1 : Math.min(elapsed / FILL_MS, CAP)
+      if (!done && target >= CAP && !overdueSet.current) {
         overdueSet.current = true
         setOverdue(true)
       }
 
       setProgress((shown) => {
         if (shown >= target) return shown
+        // Пока ждём, цель и так плавная — она считается от времени. Идём
+        // за ней сразу, но шагами не мельче MIN_STEP.
+        if (!done) return target - shown >= MIN_STEP || target >= CAP ? target : shown
+        // Готово — доезжаем до 100% плавно, а не скачком.
         const eased = shown + (target - shown) * (1 - Math.exp(-dt / SMOOTH_MS))
         return target - eased < 0.0005 ? target : eased
       })
