@@ -40,7 +40,9 @@ const ASPECT_RATIO = '1:1'
  * Модели на выбор. У kie.ai у каждого семейства свой формат запроса: у Nano
  * Banana кадр едет в `image_input` и размер задаётся разрешением, у GPT
  * Image — в `input_urls`, у Grok Imagine — в `image_urls`, а размера нет
- * вовсе (кадр там упоминают в промпте как @image1). Промпт у всех один.
+ * вовсе (кадр там упоминают в промпте как @image1), у Seedream — тоже
+ * `image_urls`, а размер задаёт `quality` (basic — 2K). Nano Banana получает
+ * отлаженный русский промпт, остальные — английский (MASCOT_PROMPT_EN).
  *
  * Скорость у всех упирается в очередь kie.ai и гуляет от 20 секунд до двух
  * минут — модель тут почти ничего не решает. Сравнивать их удобнее по
@@ -65,11 +67,15 @@ export const MODELS: Record<string, ModelSpec> = {
   'nano-banana-pro': { label: 'Nano Banana Pro', input: nanoBananaInput },
   'gpt-image-2-image-to-image': {
     label: 'GPT Image 2',
-    input: (imageUrl) => ({ prompt: MASCOT_PROMPT, input_urls: [imageUrl], aspect_ratio: ASPECT_RATIO, resolution: RESOLUTION }),
+    input: (imageUrl) => ({ prompt: MASCOT_PROMPT_EN, input_urls: [imageUrl], aspect_ratio: ASPECT_RATIO, resolution: RESOLUTION }),
   },
   'grok-imagine/image-to-image': {
     label: 'Grok Imagine',
-    input: (imageUrl) => ({ prompt: `@image1 ${MASCOT_PROMPT}`, image_urls: [imageUrl] }),
+    input: (imageUrl) => ({ prompt: `@image1 ${MASCOT_PROMPT_EN}`, image_urls: [imageUrl] }),
+  },
+  'seedream/4.5-edit': {
+    label: 'Seedream 4.5',
+    input: (imageUrl) => ({ prompt: MASCOT_PROMPT_EN, image_urls: [imageUrl], aspect_ratio: ASPECT_RATIO, quality: 'basic' }),
   },
 }
 
@@ -173,6 +179,66 @@ export const MASCOT_PROMPT = [
   // про него забывала, возвращая белый.
   'Фон замени на сплошной чёрный: ровный чистый #000000, без предметов,',
   'без теней, без градиента, без переноса обстановки с фотографии.',
+].join(' ')
+
+/**
+ * Тот же промпт по-английски — для моделей не от Google (GPT Image, Grok,
+ * Seedream). Русский они понимают хуже: замер 9 ноября на фото двух
+ * несуществующих людей — с русским промптом GPT Image 2 и Grok почти не
+ * стилизовали (выходило фото на чёрном), а Seedream не убрала фон зала.
+ *
+ * Отличия от русского — только там, где этим моделям нужно сказать прямо:
+ * стиль назван явно (современная 3D-анимация Disney/Pixar, «это мультфильм,
+ * не фото»), а в фоне — «без других людей»: в том же замере за спиной
+ * оставались посетители зала. Остальное — дословно: каждое правило там
+ * закрывает реальный промах, см. комментарии к MASCOT_PROMPT.
+ *
+ * Фон — первой строкой И последней. Эти модели — редакторы: что не велено
+ * менять, они оставляют, и требование только в конце Seedream пропускала —
+ * фон зала оставался у двух кадров из двух. С первой строкой — чистый
+ * чёрный у обоих. Nano Banana наоборот забывала фон, стоявший первым, —
+ * поэтому у русского промпта он только в конце.
+ */
+export const MASCOT_PROMPT_EN = [
+  'First remove the entire original background, including all other people,',
+  'and put the character on a solid flat black #000000 background.',
+
+  'Turn the person in the photo into a stylized 3D animated character in the style',
+  'of a modern Disney / Pixar animated feature film: soft rounded shapes, expressive',
+  'eyes, smooth stylized skin, soft cinematic lighting, high-quality 3D render.',
+  'It must clearly be a cartoon character, not a photo.',
+  'The most important thing is recognizability: the character must look like this',
+  'particular person, not like someone generic.',
+
+  'Do not change their appearance: keep gender, age, skin tone, face shape and facial features.',
+  'Copy the hair exactly: length, color, parting and styling.',
+  'Long hair stays long, short hair stays short; light hair does not get darker,',
+  'dark hair does not get lighter. Do not cut or recolor it.',
+  'Keep the same eye color as in the photo.',
+  'Copy the clothing: type, cut and color.',
+  'Take glasses, mustache, beard, earrings and headwear only from the photo:',
+  'if they are not there, do not add them; if they are, do not remove them.',
+
+  'Both eyes are identical and clean: the iris is fully visible, pupils in place,',
+  'no black spots, shadows or darkening on the eyeballs.',
+
+  'The character smiles and looks into the camera.',
+
+  'Framing: waist-up, the bottom edge at the waist, the whole head in frame',
+  'with some space above it, shoulders fully visible.',
+
+  'Copy the arm pose from the photo: crossed arms stay crossed,',
+  'arms along the body stay along the body.',
+  'If the arms are not visible, they are lowered and out of frame.',
+  'Do not raise the hands to the face or neck and do not cross the arms on your own.',
+
+  'Do not depict gestures, finger signs or raised hands:',
+  'if there is a gesture in the photo, put the arms down along the body.',
+
+  'Do not transfer text, logos or prints from the clothing onto the character.',
+
+  'Replace the background with solid black: flat clean #000000, no objects,',
+  'no other people, no shadows, no gradient, nothing from the original surroundings.',
 ].join(' ')
 
 
