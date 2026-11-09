@@ -70,13 +70,14 @@ function withTimeout(signal: AbortSignal | undefined, ms: number): AbortSignal {
 /**
  * Шаг опроса. Раньше был один на всё время — 1500 мс, и первый запрос уходил
  * только после паузы, то есть полторы секунды терялись всегда. Теперь
- * спрашиваем сразу, часто в начале и реже потом: быстрый прогон (26 с)
- * ловится почти без задержки, а на медленном не долбим сервис попусту.
+ * спрашиваем сразу и каждую секунду первую минуту — быстрая отрисовка
+ * (20–25 с) ловится почти без задержки. Дальше реже: на долгом прогоне
+ * секунда роли не играет.
  */
-const POLL_FAST_MS = 700
-const POLL_SLOW_MS = 2500
+const POLL_FAST_MS = 1000
+const POLL_SLOW_MS = 2000
 /** После этого момента переходим на редкий шаг. */
-const POLL_RAMP_MS = 20_000
+const POLL_RAMP_MS = 60_000
 
 /**
  * Промпт собран по схеме из avatar/Frame 2147239707.png (40 МБ, в git не
@@ -319,28 +320,47 @@ async function awaitResult(taskId: string, deadline: number, signal?: AbortSigna
 }
 
 /**
- * Ждём первую задачу, которая дойдёт до конца; остальные бросаем.
- * Своим контроллером отменяем проигравших, чтобы не опрашивать их зря —
- * и не трогаем при этом сигнал вызывающего.
+ * Гонка задач: запускаем ATTEMPTS сразу, берём первую готовую картинку,
+ * остальных бросаем — своим контроллером, не трогая сигнал вызывающего.
+ *
+ * Каждая задача идёт сама по себе: не создалась одна — ждём другую, а не
+ * роняем весь прогон. Проваливается гонка, только когда провалились все.
  */
-async function firstResult(taskIds: string[], deadline: number, signal?: AbortSignal): Promise<string> {
-  if (taskIds.length === 1) return awaitResult(taskIds[0], deadline, signal)
-
+function race(imageUrl: string, deadline: number, signal?: AbortSignal): Promise<string> {
   const losers = new AbortController()
-  const abort = withTimeout(signal, Math.max(deadline - Date.now(), 1))
-  abort.addEventListener('abort', () => losers.abort(), { once: true })
+  const stop = withTimeout(signal, Math.max(deadline - Date.now(), 1))
+  const onStop = () => losers.abort()
+  stop.addEventListener('abort', onStop, { once: true })
 
-  try {
-    return await Promise.any(taskIds.map((id) => awaitResult(id, deadline, losers.signal)))
-  } catch (error) {
-    // Promise.any падает только когда провалились все. Причину берём
-    // осмысленную: отказ фильтра важнее сетевой ошибки, его можно повторить.
-    const causes = error instanceof AggregateError ? error.errors : []
-    const policy = causes.find((e) => e instanceof GenerationError && e.reason === 'policy')
-    throw policy ?? causes.find((e) => e instanceof GenerationError) ?? causes[0] ?? error
-  } finally {
-    losers.abort()
-  }
+  return new Promise<string>((resolve, reject) => {
+    let running = ATTEMPTS
+    let settled = false
+    const errors: unknown[] = []
+
+    const settle = (done: () => void) => {
+      if (settled) return
+      settled = true
+      stop.removeEventListener('abort', onStop)
+      losers.abort()
+      done()
+    }
+
+    for (let i = 0; i < ATTEMPTS; i++) {
+      createTask(imageUrl, signal)
+        .then((taskId) => awaitResult(taskId, deadline, losers.signal))
+        .then(
+          (url) => settle(() => resolve(url)),
+          (error) => {
+            errors.push(error)
+            if (--running > 0) return
+            // Причину берём осмысленную: отказ фильтра важнее сетевой
+            // ошибки — его внешний цикл переспросит.
+            const policy = errors.find((e) => e instanceof GenerationError && e.reason === 'policy')
+            settle(() => reject(policy ?? errors.find((e) => e instanceof GenerationError) ?? errors[0]))
+          },
+        )
+    }
+  })
 }
 
 /** Забираем картинку себе: ссылка на хранилище временная, да и сеть может отвалиться. */
@@ -393,11 +413,8 @@ export async function generateMascot(photoDataUrl: string, { signal, onUpload }:
   // поэтому один повторный заход делаем молча.
   let resultUrl: string | undefined
   for (let attempt = 0; attempt < 2; attempt++) {
-    const taskIds = await Promise.all(
-      Array.from({ length: ATTEMPTS }, () => createTask(imageUrl, signal)),
-    )
     try {
-      resultUrl = await firstResult(taskIds, deadline, signal)
+      resultUrl = await race(imageUrl, deadline, signal)
       break
     } catch (error) {
       const retriable = error instanceof GenerationError && error.reason === 'policy'
