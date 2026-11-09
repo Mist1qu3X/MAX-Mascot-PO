@@ -137,11 +137,11 @@ export function App() {
           track('generation', `failed:${reason}`, { ms })
           timers.current.push(window.setTimeout(goToWelcome, ERROR_HOLD_MS))
         }
-      }, { model })
+      }, { model, progressSeconds: settings?.progressSeconds })
 
       timers.current.push(window.setTimeout(() => setScreen('loading'), SHOT_HOLD_MS))
     },
-    [generation, goToWelcome, settings?.model],
+    [generation, goToWelcome, settings?.model, settings?.progressSeconds],
   )
 
   const handleRestart = useCallback(() => {
@@ -154,7 +154,11 @@ export function App() {
   const applySettings = useCallback((next: Settings) => {
     saveSettings(next)
     setSettings(next)
-    track('setup', `${next.format}:${next.language}`, { cameraZoom: next.cameraZoom, model: next.model })
+    track('setup', `${next.format}:${next.language}`, {
+      cameraZoom: next.cameraZoom,
+      model: next.model,
+      progressSeconds: next.progressSeconds,
+    })
     if (window.location.hash === '#setup') window.location.hash = ''
   }, [])
 

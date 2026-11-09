@@ -33,10 +33,28 @@ export function clampZoom(value: unknown): number {
   return Math.min(Math.max(Number(stepped.toFixed(2)), CAMERA_ZOOM.min), CAMERA_ZOOM.max)
 }
 
+/**
+ * За сколько секунд шкала на экране обработки проходит от 0 до 100%,
+ * равномерно. Сервис настоящего прогресса не отдаёт, так что это просто
+ * обещание по времени — оператор подгоняет его под то, сколько реально
+ * идёт отрисовка. Дольше трёх минут нет смысла: к этому времени генерацию
+ * обрывает общий предел (DEADLINE_MS в hooks/useGeneration.ts).
+ */
+export const PROGRESS_FILL = { min: 10, max: 180, step: 5, initial: 50 }
+
+/** Нет значения (настройки сохранены до появления этой) — по умолчанию. */
+export function clampProgressSeconds(value: unknown): number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return PROGRESS_FILL.initial
+  const stepped = Math.round(value / PROGRESS_FILL.step) * PROGRESS_FILL.step
+  return Math.min(Math.max(stepped, PROGRESS_FILL.min), PROGRESS_FILL.max)
+}
+
 export type Settings = {
   format: Format
   language: Language
   cameraZoom: number
+  /** За сколько секунд шкала загрузки доходит до 100% (см. PROGRESS_FILL). */
+  progressSeconds: number
   /** Выбранная камера: id от браузера и имя устройства — на случай, если id сменится. */
   cameraId?: string
   cameraLabel?: string
@@ -57,6 +75,7 @@ export function readSettings(): Settings | null {
       format: parsed.format,
       language: parsed.language ?? 'ru',
       cameraZoom: clampZoom(parsed.cameraZoom),
+      progressSeconds: clampProgressSeconds(parsed.progressSeconds),
       cameraId: typeof parsed.cameraId === 'string' ? parsed.cameraId : undefined,
       cameraLabel: typeof parsed.cameraLabel === 'string' ? parsed.cameraLabel : undefined,
       model: typeof parsed.model === 'string' && parsed.model ? parsed.model : undefined,
@@ -95,6 +114,7 @@ export function loadSettings(): Settings | null {
     format,
     language,
     cameraZoom: saved?.cameraZoom ?? CAMERA_ZOOM.initial,
+    progressSeconds: saved?.progressSeconds ?? PROGRESS_FILL.initial,
     cameraId: saved?.cameraId,
     cameraLabel: saved?.cameraLabel,
     model: saved?.model,

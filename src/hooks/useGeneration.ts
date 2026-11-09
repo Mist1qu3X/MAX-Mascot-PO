@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
+import { PROGRESS_FILL, clampProgressSeconds } from '../format'
 import { GenerationError, generateMascot, type FailureReason } from '../services/kie'
 import { ensureDarkBackdrop } from '../services/backdrop'
 import { checkPhoto, type Verdict } from '../services/moderation'
@@ -13,7 +14,8 @@ export type GenerationState = 'idle' | 'running' | 'done' | 'error'
  * была честнее, но ломалась заметнее: если запрос подвисал, шкала намертво
  * вставала на асимптоте своего этапа — те самые 12% на загрузке кадра.
  *
- * Теперь шкала едет по времени, равномерно: 100% за FILL_MS. Успели
+ * Теперь шкала едет по времени, равномерно: 100% за время из настроек
+ * (progressSeconds, по умолчанию PROGRESS_FILL.initial). Успели
  * раньше — доезжает до 100% и уходит на результат. Не успели — шкала
  * останавливается на 99% (100% значит «готово»), и подпись меняется на
  * «осталось совсем немного»: честнее сказать это словами, чем делать вид,
@@ -27,8 +29,6 @@ export type GenerationState = 'idle' | 'running' | 'done' | 'error'
  */
 const DEADLINE_MS = 180_000
 
-/** За столько шкала проходит от 0 до 100%, равномерно. */
-const FILL_MS = 60_000
 /**
  * Выше этого без готовой картинки не поднимаемся: 100% значит «готово».
  * Дошли сюда — подпись меняется на «осталось совсем немного».
@@ -45,7 +45,7 @@ const MIN_STEP = 0.001
 export function useGeneration() {
   const [state, setState] = useState<GenerationState>('idle')
   const [progress, setProgress] = useState(0)
-  /** Минута вышла, а картинки нет — подпись на экране меняется. */
+  /** Время шкалы вышло, а картинки нет — подпись на экране меняется. */
   const [overdue, setOverdue] = useState(false)
   const [mascot, setMascot] = useState<string | null>(null)
   /** Второй источник той же картинки — на случай, если первый не отдастся. */
@@ -57,7 +57,9 @@ export function useGeneration() {
   const mascotRef = useRef<string | null>(null)
   const finished = useRef(false)
   const startedAt = useRef(0)
-  /** Чтобы не дёргать setState шестьдесят раз в секунду после минуты. */
+  /** За сколько шкала этого запуска проходит от 0 до 100%. */
+  const fillMs = useRef(PROGRESS_FILL.initial * 1000)
+  /** Чтобы не дёргать setState шестьдесят раз в секунду после 99%. */
   const overdueSet = useRef(false)
 
   const reset = useCallback(() => {
@@ -80,11 +82,12 @@ export function useGeneration() {
     async (
       photoDataUrl: string,
       onFinish?: (r: { ok: boolean; ms: number; reason?: FailureReason }) => void,
-      { model }: { model?: string } = {},
+      { model, progressSeconds }: { model?: string; progressSeconds?: number } = {},
     ) => {
       abort.current?.abort()
       const controller = new AbortController()
       abort.current = controller
+      fillMs.current = clampProgressSeconds(progressSeconds) * 1000
       finished.current = false
       overdueSet.current = false
       setError(null)
@@ -225,7 +228,7 @@ export function useGeneration() {
 
       const elapsed = Date.now() - startedAt.current
       const done = finished.current
-      const target = done ? 1 : Math.min(elapsed / FILL_MS, CAP)
+      const target = done ? 1 : Math.min(elapsed / fillMs.current, CAP)
       if (!done && target >= CAP && !overdueSet.current) {
         overdueSet.current = true
         setOverdue(true)

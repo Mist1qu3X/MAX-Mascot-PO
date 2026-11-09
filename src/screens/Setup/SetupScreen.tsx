@@ -1,6 +1,16 @@
 import { useState } from 'react'
 
-import { CAMERA_ZOOM, FORMATS, LANGUAGES, clampZoom, type Format, type Language, type Settings } from '../../format'
+import {
+  CAMERA_ZOOM,
+  FORMATS,
+  LANGUAGES,
+  PROGRESS_FILL,
+  clampProgressSeconds,
+  clampZoom,
+  type Format,
+  type Language,
+  type Settings,
+} from '../../format'
 import { MIRRORED, PREVIEW_ASPECT, cropTransform, useCamera, type CameraDevice } from '../../hooks/useCamera'
 import { DEFAULT_MODEL, MODELS, modelLabel } from '../../services/kie'
 
@@ -53,6 +63,9 @@ export function SetupScreen({ initial, onDone, onDiagnostics }: SetupScreenProps
   const [model, setModel] = useState(
     initial?.model && OFFERED_MODELS.includes(initial.model) ? initial.model : DEFAULT_MODEL,
   )
+  const [progressSeconds, setProgressSeconds] = useState(() => clampProgressSeconds(initial?.progressSeconds))
+  const changeProgress = (direction: 1 | -1) =>
+    setProgressSeconds((s) => clampProgressSeconds(s + direction * PROGRESS_FILL.step))
   const [zoom, setZoom] = useState(() => clampZoom(initial?.cameraZoom ?? CAMERA_ZOOM.initial))
   const [cameraId, setCameraId] = useState(initial?.cameraId ?? '')
   const [cameraLabel, setCameraLabel] = useState(initial?.cameraLabel ?? '')
@@ -131,6 +144,35 @@ export function SetupScreen({ initial, onDone, onDiagnostics }: SetupScreenProps
         </section>
 
         <section className={styles.section}>
+          <h2 className={styles.label}>Шкала загрузки: время от 0 до 100%</h2>
+          <div className={styles.stepper}>
+            <button
+              type="button"
+              className={styles.stepButton}
+              aria-label="Меньше секунд"
+              disabled={progressSeconds <= PROGRESS_FILL.min}
+              onClick={() => changeProgress(-1)}
+            >
+              −
+            </button>
+            <span className={styles.stepValue}>{progressSeconds}&nbsp;с</span>
+            <button
+              type="button"
+              className={styles.stepButton}
+              aria-label="Больше секунд"
+              disabled={progressSeconds >= PROGRESS_FILL.max}
+              onClick={() => changeProgress(1)}
+            >
+              +
+            </button>
+          </div>
+          <p className={styles.note}>
+            Картинка готова раньше — шкала сразу доезжает до 100%. Не готова — ждёт на 99%
+            с надписью «Осталось совсем немного…».
+          </p>
+        </section>
+
+        <section className={styles.section}>
           <h2 className={styles.label}>Камера</h2>
           {camera.devices.length > 0 && (
             <div className={styles.options}>
@@ -148,7 +190,7 @@ export function SetupScreen({ initial, onDone, onDiagnostics }: SetupScreenProps
             </div>
           )}
           {camera.devices.length === 0 && camera.status !== 'starting' && (
-            <p className={styles.zoomNote}>
+            <p className={styles.note}>
               Система не видит ни одной камеры. Подключите её и нажмите «Обновить список камер».
             </p>
           )}
@@ -173,20 +215,20 @@ export function SetupScreen({ initial, onDone, onDiagnostics }: SetupScreenProps
             </div>
 
             <div className={styles.zoom}>
-              <div className={styles.zoomRow}>
+              <div className={styles.stepper}>
                 <button
                   type="button"
-                  className={styles.zoomButton}
+                  className={styles.stepButton}
                   aria-label="Отдалить"
                   disabled={zoom <= CAMERA_ZOOM.min}
                   onClick={() => changeZoom(-1)}
                 >
                   −
                 </button>
-                <span className={styles.zoomValue}>{zoomLabel(zoom)}</span>
+                <span className={styles.stepValue}>{zoomLabel(zoom)}</span>
                 <button
                   type="button"
-                  className={styles.zoomButton}
+                  className={styles.stepButton}
                   aria-label="Приблизить"
                   disabled={zoom >= CAMERA_ZOOM.max}
                   onClick={() => changeZoom(1)}
@@ -194,7 +236,7 @@ export function SetupScreen({ initial, onDone, onDiagnostics }: SetupScreenProps
                   +
                 </button>
               </div>
-              <p className={styles.zoomNote}>
+              <p className={styles.note}>
                 ×1 — весь кадр камеры. Больше — ближе: по бокам и снизу обрезается лишнее,
                 голова остаётся вверху. Снимок будет ровно таким, как в окне.
               </p>
@@ -211,6 +253,7 @@ export function SetupScreen({ initial, onDone, onDiagnostics }: SetupScreenProps
               format,
               language,
               model,
+              progressSeconds,
               cameraZoom: zoom,
               // Запоминаем ту камеру, что работала в превью, — её же возьмёт
               // экран съёмки. Не включилась никакая — оставляем выбор как есть.

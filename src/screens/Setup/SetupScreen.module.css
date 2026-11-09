@@ -216,13 +216,15 @@
   gap: calc(2 * var(--s));
 }
 
-.zoomRow {
+/* --- Кнопки −/+ со значением: время шкалы и масштаб камеры --------- */
+
+.stepper {
   display: flex;
   align-items: center;
   gap: calc(2.4 * var(--s));
 }
 
-.zoomButton {
+.stepButton {
   width: calc(10 * var(--s));
   height: calc(10 * var(--s));
   border: calc(0.35 * var(--s)) solid rgb(255 255 255 / 0.24);
@@ -234,11 +236,11 @@
   color: #fff;
 }
 
-.zoomButton:disabled {
+.stepButton:disabled {
   opacity: 0.3;
 }
 
-.zoomValue {
+.stepValue {
   min-width: calc(12 * var(--s));
   text-align: center;
   font-size: calc(4.4 * var(--s));
@@ -246,7 +248,7 @@
   font-variant-numeric: tabular-nums;
 }
 
-.zoomNote {
+.note {
   margin: 0;
   font-size: calc(2 * var(--s));
   line-height: 1.4;
