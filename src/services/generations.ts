@@ -16,7 +16,7 @@
 
 import { desktop, filesystem } from './desktop'
 import { RELAY, relayHeaders } from '../relay'
-import type { FailureReason } from './kie'
+import { modelLabel, type FailureReason } from './kie'
 
 export type GenerationStatus = 'success' | 'cancelled' | `error:${FailureReason}`
 
@@ -29,6 +29,8 @@ type GenerationRow = {
   startedAt: string
   finishedAt: string
   status: GenerationStatus
+  /** id модели на kie.ai, см. MODELS в kie.ts. */
+  model?: string
 }
 
 const ENDPOINT = `${RELAY}/stats/generations`
@@ -52,7 +54,14 @@ const FLUSH_INTERVAL_MS = 60_000
  * в базу уходит UTC.
  */
 const CSV_FILE = 'generations.csv'
-const CSV_HEADER = '﻿номер;начало;конец;длительность, с;статус\r\n'
+const CSV_HEADER = '﻿номер;начало;конец;длительность, с;статус;модель\r\n'
+/**
+ * Заголовок файла до выбора модели. Такой файл переписываем: новый
+ * заголовок, а старым строкам — их модель. До выбора модели генерировала
+ * только Nano Banana 2: переопределения нигде не было.
+ */
+const OLD_HEADER = 'номер;начало;конец;длительность, с;статус'
+const OLD_MODEL = 'nano-banana-2'
 
 const STATUS_LABELS: Record<GenerationStatus, string> = {
   success: 'успех',
@@ -93,14 +102,24 @@ let csvExists = false
 const ready: Promise<void> = (async () => {
   const fs = await filesystem()
   if (!fs) return
+  let text: string
   try {
-    const text = await fs.readFile(CSV_FILE)
+    text = await fs.readFile(CSV_FILE)
     csvExists = true
-    const last = text.trim().split(/\r?\n/).pop() ?? ''
-    const number = Number.parseInt(last.split(';')[0], 10)
-    if (Number.isFinite(number)) lastNumber = Math.max(lastNumber, number)
   } catch {
-    // Файла ещё нет — первая генерация его создаст.
+    return // файла ещё нет — первая генерация его создаст
+  }
+  const last = text.trim().split(/\r?\n/).pop() ?? ''
+  const number = Number.parseInt(last.split(';')[0], 10)
+  if (Number.isFinite(number)) lastNumber = Math.max(lastNumber, number)
+
+  // Файл от версии без колонки «модель» — дописываем её. Это до первой
+  // новой строки: запись ждёт `ready`, так что дописать посреди не успеют.
+  const [head, ...rows] = text.split(/\r?\n/)
+  if (head.replace(/^﻿/, '') === OLD_HEADER && fs.writeFile) {
+    const old = modelLabel(OLD_MODEL)
+    const body = rows.map((row) => (row.trim() ? `${row};${old}` : row)).join('\r\n')
+    await fs.writeFile(CSV_FILE, CSV_HEADER + body).catch(() => undefined)
   }
 })()
 
@@ -127,6 +146,7 @@ export function csvRow(row: GenerationRow) {
     localTime(row.finishedAt),
     seconds.toFixed(1).replace('.', ','),
     STATUS_LABELS[row.status] ?? row.status,
+    row.model ? modelLabel(row.model) : '',
   ].join(';') + '\r\n'
 }
 
@@ -182,7 +202,7 @@ async function flush(): Promise<void> {
   }
 }
 
-async function record(startedAt: Date, finishedAt: Date, status: GenerationStatus) {
+async function record(startedAt: Date, finishedAt: Date, status: GenerationStatus, model?: string) {
   await ready
   const row: GenerationRow = {
     uid: newUid(),
@@ -191,6 +211,7 @@ async function record(startedAt: Date, finishedAt: Date, status: GenerationStatu
     startedAt: startedAt.toISOString(),
     finishedAt: finishedAt.toISOString(),
     status,
+    ...(model ? { model } : {}),
   }
   write(COUNTER_KEY, lastNumber)
   appendToCsv(row)
@@ -203,19 +224,22 @@ async function record(startedAt: Date, finishedAt: Date, status: GenerationStatu
   void flush()
 }
 
-let current: { startedAt: Date } | null = null
+let current: { startedAt: Date; model?: string } | null = null
 
 function finish(status: GenerationStatus) {
   if (!current) return
-  const { startedAt } = current
+  const { startedAt, model } = current
   current = null
-  void record(startedAt, new Date(), status)
+  void record(startedAt, new Date(), status, model)
 }
 
-/** Кадр снят, генерация пошла. Незакрытая прежняя считается прерванной. */
-export function beginGeneration() {
+/**
+ * Кадр снят, генерация пошла — на модели `model`. Незакрытая прежняя
+ * считается прерванной.
+ */
+export function beginGeneration(model?: string) {
   finish('cancelled')
-  current = { startedAt: new Date() }
+  current = { startedAt: new Date(), model }
 }
 
 /** Генерация закончилась: результат на экране или ошибка. */

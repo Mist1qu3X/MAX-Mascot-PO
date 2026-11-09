@@ -2,6 +2,10 @@ import { useState } from 'react'
 
 import { CAMERA_ZOOM, FORMATS, LANGUAGES, clampZoom, type Format, type Language, type Settings } from '../../format'
 import { MIRRORED, PREVIEW_ASPECT, cropTransform, useCamera, type CameraDevice } from '../../hooks/useCamera'
+import { DEFAULT_MODEL, MODELS, modelLabel } from '../../services/kie'
+
+/** Модели на экране: все из MODELS, плюс заданная через VITE_KIE_MODEL, если её там нет. */
+const OFFERED_MODELS = MODELS[DEFAULT_MODEL] ? Object.keys(MODELS) : [...Object.keys(MODELS), DEFAULT_MODEL]
 import styles from './SetupScreen.module.css'
 
 const CAMERA_PROBLEM: Record<string, string> = {
@@ -45,6 +49,9 @@ export function SetupScreen({ initial, onDone, onDiagnostics }: SetupScreenProps
   )
   const [language, setLanguage] = useState<Language>(
     initial && OFFERED_LANGUAGES.includes(initial.language) ? initial.language : OFFERED_LANGUAGES[0],
+  )
+  const [model, setModel] = useState(
+    initial?.model && OFFERED_MODELS.includes(initial.model) ? initial.model : DEFAULT_MODEL,
   )
   const [zoom, setZoom] = useState(() => clampZoom(initial?.cameraZoom ?? CAMERA_ZOOM.initial))
   const [cameraId, setCameraId] = useState(initial?.cameraId ?? '')
@@ -107,6 +114,20 @@ export function SetupScreen({ initial, onDone, onDiagnostics }: SetupScreenProps
               </button>
             ))}
           </div>
+        </section>
+
+        <section className={styles.section}>
+          <label className={styles.label} htmlFor="setup-model">Модель генерации</label>
+          <select
+            id="setup-model"
+            className={styles.select}
+            value={model}
+            onChange={(event) => setModel(event.target.value)}
+          >
+            {OFFERED_MODELS.map((key) => (
+              <option key={key} value={key}>{modelLabel(key)}</option>
+            ))}
+          </select>
         </section>
 
         <section className={styles.section}>
@@ -189,6 +210,7 @@ export function SetupScreen({ initial, onDone, onDiagnostics }: SetupScreenProps
             onClick={() => onDone({
               format,
               language,
+              model,
               cameraZoom: zoom,
               // Запоминаем ту камеру, что работала в превью, — её же возьмёт
               // экран съёмки. Не включилась никакая — оставляем выбор как есть.

@@ -40,6 +40,8 @@ export type Settings = {
   /** Выбранная камера: id от браузера и имя устройства — на случай, если id сменится. */
   cameraId?: string
   cameraLabel?: string
+  /** Модель генерации на kie.ai (см. MODELS в services/kie.ts). Нет — модель по умолчанию. */
+  model?: string
 }
 
 const KEY = 'max.settings'
@@ -57,6 +59,7 @@ export function readSettings(): Settings | null {
       cameraZoom: clampZoom(parsed.cameraZoom),
       cameraId: typeof parsed.cameraId === 'string' ? parsed.cameraId : undefined,
       cameraLabel: typeof parsed.cameraLabel === 'string' ? parsed.cameraLabel : undefined,
+      model: typeof parsed.model === 'string' && parsed.model ? parsed.model : undefined,
     }
   } catch {
     return null
@@ -94,6 +97,7 @@ export function loadSettings(): Settings | null {
     cameraZoom: saved?.cameraZoom ?? CAMERA_ZOOM.initial,
     cameraId: saved?.cameraId,
     cameraLabel: saved?.cameraLabel,
+    model: saved?.model,
   }
 }
 

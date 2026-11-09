@@ -139,6 +139,34 @@
   color: rgb(255 255 255 / 0.45);
 }
 
+/* --- Выбор модели: выпадающий список --------------------------------- */
+
+/* Свой вид вместо системного, стрелка — картинкой справа. Ширина — как у
+   варианта в ряд выше, чтобы колонка экрана не прыгала. */
+.select {
+  width: calc(50% - 1 * var(--s));
+  padding: calc(2 * var(--s)) calc(6 * var(--s)) calc(2 * var(--s)) calc(2.4 * var(--s));
+  border: calc(0.35 * var(--s)) solid #7c33ff;
+  border-radius: calc(3 * var(--s));
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")
+      no-repeat right calc(2.2 * var(--s)) center / calc(3 * var(--s)),
+    rgb(124 51 255 / 0.22);
+  appearance: none;
+  font: inherit;
+  font-size: calc(2.8 * var(--s));
+  font-weight: var(--fw-count);
+  color: #fff;
+  cursor: pointer;
+}
+
+/* Раскрытый список рисует система: без своих цветов он бывает белым
+   с белым текстом. */
+.select option {
+  background: #1d0b3a;
+  color: #fff;
+}
+
 /* --- Масштаб камеры: живое превью и кнопки ------------------------- */
 
 .camera {

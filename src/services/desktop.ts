@@ -15,6 +15,8 @@
 type Filesystem = {
   appendFile: (path: string, data: string) => Promise<void>
   readFile: (path: string) => Promise<string>
+  /** Перезаписать файл целиком. Разрешено в nativeAllowList. */
+  writeFile?: (path: string, data: string) => Promise<void>
 }
 
 type Neutralino = {

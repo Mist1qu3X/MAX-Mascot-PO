@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 
 import { readSettings } from '../../format'
-import { apiRoute, generationConfig } from '../../services/kie'
+import { apiRoute, generationConfig, modelLabel } from '../../services/kie'
 import { pendingCount } from '../../services/stats'
 import { pendingGenerations } from '../../services/generations'
 import { desktop } from '../../services/desktop'
@@ -159,7 +159,9 @@ export function DiagScreen({ onClose }: { onClose?: () => void }) {
 
       <dl className={styles.facts}>
         <div><dt>Ключ kie.ai</dt><dd>{generationConfig.hasKey ? 'задан' : 'НЕ ЗАДАН'}</dd></div>
-        <div><dt>Модель</dt><dd>{generationConfig.model} · {generationConfig.resolution} · {generationConfig.format}</dd></div>
+        <div><dt>Модель</dt><dd>
+          {modelLabel(readSettings()?.model ?? generationConfig.defaultModel)} · {generationConfig.resolution} · {generationConfig.format}
+        </dd></div>
         <div><dt>Задач на кадр</dt><dd>{generationConfig.attempts}</dd></div>
         <div><dt>Путь к API</dt><dd>{apiRoute() === 'direct' ? 'напрямую на api.kie.ai' : 'через свой сервер (api.kie.ai не отвечал)'}</dd></div>
         <div><dt>Адрес страницы</dt><dd>{RELAY}</dd></div>

@@ -1,5 +1,6 @@
 /**
- * Генерация маскота через kie.ai (модель Nano Banana 2).
+ * Генерация маскота через kie.ai. Модель выбирает оператор на экране
+ * настройки (см. MODELS), по умолчанию — DEFAULT_MODEL.
  *
  * Порядок: загрузить фото на временное хранилище → создать задачу →
  * опрашивать её до готовности → забрать картинку себе.
@@ -10,7 +11,8 @@ const API_HOST = 'https://api.kie.ai'
 
 import { RELAY, relayHeaders } from '../relay'
 
-const MODEL = import.meta.env.VITE_KIE_MODEL ?? 'nano-banana-2'
+/** Модель, пока оператор не выбрал другую на экране настройки. */
+export const DEFAULT_MODEL = import.meta.env.VITE_KIE_MODEL ?? 'nano-banana-2'
 const RESOLUTION = import.meta.env.VITE_KIE_RESOLUTION ?? '2K'
 /**
  * jpg вместо png: тот же кадр весит 1.3 МБ против 4.4 МБ, скачивание на
@@ -33,6 +35,46 @@ const ATTEMPTS = Math.max(1, Number(import.meta.env.VITE_KIE_ATTEMPTS ?? 2))
 
 /** Референсы в макете — квадратные 2048 × 2048. */
 const ASPECT_RATIO = '1:1'
+
+/**
+ * Модели на выбор. У kie.ai у каждого семейства свой формат запроса: у Nano
+ * Banana кадр едет в `image_input` и размер задаётся разрешением, у GPT
+ * Image — в `input_urls`, у Grok Imagine — в `image_urls`, а размера нет
+ * вовсе (кадр там упоминают в промпте как @image1). Промпт у всех один.
+ *
+ * Скорость у всех упирается в очередь kie.ai и гуляет от 20 секунд до двух
+ * минут — модель тут почти ничего не решает. Сравнивать их удобнее по
+ * статистике: там у каждой генерации записана модель.
+ */
+type ModelSpec = {
+  label: string
+  input: (imageUrl: string) => Record<string, unknown>
+}
+
+const nanoBananaInput = (imageUrl: string) => ({
+  prompt: MASCOT_PROMPT,
+  image_input: [imageUrl],
+  aspect_ratio: ASPECT_RATIO,
+  resolution: RESOLUTION,
+  output_format: OUTPUT_FORMAT,
+})
+
+export const MODELS: Record<string, ModelSpec> = {
+  'nano-banana-2': { label: 'Nano Banana 2', input: nanoBananaInput },
+  'nano-banana-2-1': { label: 'Nano Banana 2.1', input: nanoBananaInput },
+  'nano-banana-pro': { label: 'Nano Banana Pro', input: nanoBananaInput },
+  'gpt-image-2-image-to-image': {
+    label: 'GPT Image 2',
+    input: (imageUrl) => ({ prompt: MASCOT_PROMPT, input_urls: [imageUrl], aspect_ratio: ASPECT_RATIO, resolution: RESOLUTION }),
+  },
+  'grok-imagine/image-to-image': {
+    label: 'Grok Imagine',
+    input: (imageUrl) => ({ prompt: `@image1 ${MASCOT_PROMPT}`, image_urls: [imageUrl] }),
+  },
+}
+
+/** Имя модели для людей; незнакомую показываем как есть. */
+export const modelLabel = (id: string) => MODELS[id]?.label ?? id
 
 /** Дольше этого не ждём — на панели человек не должен зависнуть. */
 const HARD_TIMEOUT_MS = 240_000
@@ -154,6 +196,8 @@ export class GenerationError extends Error {
 
 type Options = {
   signal?: AbortSignal
+  /** id модели на kie.ai, см. MODELS. */
+  model?: string
   /**
    * Кадр загружен на хранилище. Даём ссылку наружу сразу, чтобы проверку
    * можно было запустить параллельно с отрисовкой и не грузить фото дважды.
@@ -271,20 +315,14 @@ async function uploadPhoto(dataUrl: string, signal?: AbortSignal): Promise<strin
   return url
 }
 
-async function createTask(imageUrl: string, signal?: AbortSignal): Promise<string> {
+async function createTask(imageUrl: string, model: string, signal?: AbortSignal): Promise<string> {
+  // Незнакомую модель (задали через VITE_KIE_MODEL) зовём в формате Nano
+  // Banana — так устроено большинство моделей kie.ai с параметром resolution.
+  const input = (MODELS[model]?.input ?? nanoBananaInput)(imageUrl)
   const json = await callJson(`${API_HOST}/api/v1/jobs/createTask`, {
     method: 'POST',
     signal,
-    body: JSON.stringify({
-      model: MODEL,
-      input: {
-        prompt: MASCOT_PROMPT,
-        image_input: [imageUrl],
-        aspect_ratio: ASPECT_RATIO,
-        resolution: RESOLUTION,
-        output_format: OUTPUT_FORMAT,
-      },
-    }),
+    body: JSON.stringify({ model, input }),
   })
   const taskId = (json.data as { taskId?: string } | undefined)?.taskId
   if (!taskId) throw new GenerationError('api', `Задача не создана: ${JSON.stringify(json).slice(0, 200)}`)
@@ -326,7 +364,7 @@ async function awaitResult(taskId: string, deadline: number, signal?: AbortSigna
  * Каждая задача идёт сама по себе: не создалась одна — ждём другую, а не
  * роняем весь прогон. Проваливается гонка, только когда провалились все.
  */
-function race(imageUrl: string, deadline: number, signal?: AbortSignal): Promise<string> {
+function race(imageUrl: string, model: string, deadline: number, signal?: AbortSignal): Promise<string> {
   const losers = new AbortController()
   const stop = withTimeout(signal, Math.max(deadline - Date.now(), 1))
   const onStop = () => losers.abort()
@@ -346,7 +384,7 @@ function race(imageUrl: string, deadline: number, signal?: AbortSignal): Promise
     }
 
     for (let i = 0; i < ATTEMPTS; i++) {
-      createTask(imageUrl, signal)
+      createTask(imageUrl, model, signal)
         .then((taskId) => awaitResult(taskId, deadline, losers.signal))
         .then(
           (url) => settle(() => resolve(url)),
@@ -401,7 +439,10 @@ export type Mascot = {
  * значит на телефоне она открывается как картинка, и её можно сохранить
  * долгим нажатием. Отдельный хостинг для этого не нужен.
  */
-export async function generateMascot(photoDataUrl: string, { signal, onUpload }: Options = {}): Promise<Mascot> {
+export async function generateMascot(
+  photoDataUrl: string,
+  { signal, onUpload, model = DEFAULT_MODEL }: Options = {},
+): Promise<Mascot> {
   if (!API_KEY) throw new GenerationError('config', 'Не задан VITE_KIE_API_KEY')
 
   const deadline = Date.now() + HARD_TIMEOUT_MS
@@ -414,7 +455,7 @@ export async function generateMascot(photoDataUrl: string, { signal, onUpload }:
   let resultUrl: string | undefined
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
-      resultUrl = await race(imageUrl, deadline, signal)
+      resultUrl = await race(imageUrl, model, deadline, signal)
       break
     } catch (error) {
       const retriable = error instanceof GenerationError && error.reason === 'policy'
@@ -448,4 +489,4 @@ export async function removeBackground(imageUrl: string, signal?: AbortSignal): 
 /** Каким путём панель сейчас ходит за API — видно в диагностике. */
 export const apiRoute = () => route
 
-export const generationConfig = { model: MODEL, resolution: RESOLUTION, format: OUTPUT_FORMAT, attempts: ATTEMPTS, hasKey: Boolean(API_KEY) }
+export const generationConfig = { defaultModel: DEFAULT_MODEL, resolution: RESOLUTION, format: OUTPUT_FORMAT, attempts: ATTEMPTS, hasKey: Boolean(API_KEY) }

@@ -77,7 +77,11 @@ export function useGeneration() {
   }, [])
 
   const start = useCallback(
-    async (photoDataUrl: string, onFinish?: (r: { ok: boolean; ms: number; reason?: FailureReason }) => void) => {
+    async (
+      photoDataUrl: string,
+      onFinish?: (r: { ok: boolean; ms: number; reason?: FailureReason }) => void,
+      { model }: { model?: string } = {},
+    ) => {
       abort.current?.abort()
       const controller = new AbortController()
       abort.current = controller
@@ -124,6 +128,7 @@ export function useGeneration() {
 
         const { blobUrl, remoteUrl } = await generateMascot(photoDataUrl, {
           signal: controller.signal,
+          model,
           onUpload: (imageUrl) => {
             void checkPhoto(imageUrl, controller.signal).then((result) => {
               verdict = result

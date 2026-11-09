@@ -50,7 +50,10 @@ export function App() {
   useEffect(() => {
     startStats()
     startGenerationStats()
-    track('app', 'launch', { model: generationConfig.model, resolution: generationConfig.resolution })
+    track('app', 'launch', {
+      model: readSettings()?.model ?? generationConfig.defaultModel,
+      resolution: generationConfig.resolution,
+    })
   }, [])
 
   useEffect(() => {
@@ -121,7 +124,9 @@ export function App() {
       // Генерацию запускаем сразу, не дожидаясь смены экрана: загрузка кадра
       // на сервис идёт параллельно с тем, как человек смотрит на свой снимок.
       track('generation', 'start')
-      beginGeneration()
+      // Модель из настроек — она же уйдёт в статистику этой генерации.
+      const model = settings?.model ?? generationConfig.defaultModel
+      beginGeneration(model)
       void generation.start(shot, ({ ok, ms, reason }) => {
         endGeneration(ok ? 'success' : `error:${reason ?? 'api'}`)
         if (ok) {
@@ -132,11 +137,11 @@ export function App() {
           track('generation', `failed:${reason}`, { ms })
           timers.current.push(window.setTimeout(goToWelcome, ERROR_HOLD_MS))
         }
-      })
+      }, { model })
 
       timers.current.push(window.setTimeout(() => setScreen('loading'), SHOT_HOLD_MS))
     },
-    [generation, goToWelcome],
+    [generation, goToWelcome, settings?.model],
   )
 
   const handleRestart = useCallback(() => {
@@ -149,7 +154,7 @@ export function App() {
   const applySettings = useCallback((next: Settings) => {
     saveSettings(next)
     setSettings(next)
-    track('setup', `${next.format}:${next.language}`, { cameraZoom: next.cameraZoom })
+    track('setup', `${next.format}:${next.language}`, { cameraZoom: next.cameraZoom, model: next.model })
     if (window.location.hash === '#setup') window.location.hash = ''
   }, [])
 
