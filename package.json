@@ -12,7 +12,8 @@
     "sticker": "node server/index.mjs",
     "neu:run": "npm run build && neu run",
     "neu:build": "npm run build && neu build --release && cp launcher/* dist/max-mascot/",
-    "mac:app": "npm run neu:build && node tools/mac-app.mjs"
+    "mac:app": "npm run neu:build && node tools/mac-app.mjs",
+    "mac:chrome": "mkdir -p .mac-run && cp dist/max-mascot/resources.neu dist/max-mascot/max-mascot-mac_universal .mac-run/ && cd .mac-run && ./max-mascot-mac_universal --mode=chrome --chrome-width=540 --chrome-height=960"
   },
   "dependencies": {
     "qrcode": "^1.5.4",

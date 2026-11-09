@@ -17,6 +17,10 @@
 # Local browser profiles and generated screenshot captures
 /.shots/
 
+# Запуск сборки на маке в окне Chrome (npm run mac:chrome): профиль Chrome
+# и generations.csv с мака — не в репозиторий и не в dist, который едет на панель
+/.mac-run/
+
 # Large Figma exports and source font files; runtime assets live in src/assets/
 /assets/
 /en-assets/
