@@ -3,6 +3,7 @@ import type { Format } from '../../format'
 import { WelcomeLandscape } from './WelcomeLandscape'
 import { useTexts } from '../../i18n'
 import styles from './WelcomeScreen.module.css'
+import { outsideCorners } from '../../corners'
 
 type WelcomeScreenProps = {
   format: Format
@@ -27,7 +28,7 @@ export function WelcomeScreen({ format, onStart }: WelcomeScreenProps) {
       role="button"
       tabIndex={0}
       aria-label={t.welcomeAria}
-      onClick={onStart}
+      onClick={outsideCorners(onStart)}
       onKeyDown={(event) => {
         if (event.key === 'Enter' || event.key === ' ') {
           event.preventDefault()

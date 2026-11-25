@@ -1,6 +1,7 @@
 import cardsSrc from '../../assets/mascot-cards-h.png'
 import { useTexts } from '../../i18n'
 import styles from './WelcomeLandscape.module.css'
+import { outsideCorners } from '../../corners'
 
 type WelcomeLandscapeProps = {
   onStart?: () => void
@@ -15,7 +16,7 @@ export function WelcomeLandscape({ onStart }: WelcomeLandscapeProps) {
       role="button"
       tabIndex={0}
       aria-label={t.welcomeAria}
-      onClick={onStart}
+      onClick={outsideCorners(onStart)}
       onKeyDown={(event) => {
         if (event.key === 'Enter' || event.key === ' ') {
           event.preventDefault()

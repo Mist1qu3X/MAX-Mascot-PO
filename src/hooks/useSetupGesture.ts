@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 
-/** Доля экрана в углу, которая считается «секретной» зоной. */
-const CORNER = 0.08
+import { inSetupCorner } from '../corners'
+
 /** Сколько держать палец, чтобы открылась настройка. */
 const HOLD_MS = 3000
 /** Насколько можно сместить палец, не отменяя удержание. */
@@ -14,8 +14,9 @@ const SLACK_PX = 40
  * ввести — жест остаётся единственным способом переиграть ориентацию
  * и язык, не переустанавливая приложение.
  *
- * Слушаем на документе, а не отдельным элементом: так обычное касание
- * экрана в этом углу продолжает работать как раньше.
+ * Слушаем на документе, а не отдельным элементом. Экраны ожидания касание
+ * в этом углу пропускают (см. corners.ts): иначе удержание начиналось бы
+ * с запуска съёмки.
  */
 export function useSetupGesture(onTrigger: () => void) {
   useEffect(() => {
@@ -29,8 +30,7 @@ export function useSetupGesture(onTrigger: () => void) {
     }
 
     const onDown = (event: PointerEvent) => {
-      const inCorner = event.clientX < window.innerWidth * CORNER && event.clientY < window.innerHeight * CORNER
-      if (!inCorner) return
+      if (!inSetupCorner(event.clientX, event.clientY)) return
       origin = { x: event.clientX, y: event.clientY }
       timer = window.setTimeout(() => {
         cancel()

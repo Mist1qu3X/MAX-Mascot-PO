@@ -5,6 +5,7 @@ import { ResultLandscape } from './ResultLandscape'
 import { useFitText } from '../../hooks/useFitText'
 import { useTexts } from '../../i18n'
 import styles from './ResultScreen.module.css'
+import { outsideCorners } from '../../corners'
 
 type ResultScreenProps = {
   format: Format
@@ -43,7 +44,7 @@ export function ResultScreen({ format, mascot, mascotBackup, qrValue, viaPage, o
       role="button"
       tabIndex={0}
       aria-label={t.resultAria}
-      onClick={onRestart}
+      onClick={outsideCorners(onRestart)}
       onKeyDown={(event) => {
         if (event.key === 'Enter' || event.key === ' ') {
           event.preventDefault()
