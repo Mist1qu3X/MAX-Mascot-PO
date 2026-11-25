@@ -21,6 +21,8 @@
     "filesystem.readFile",
     "filesystem.appendFile",
     "filesystem.writeFile",
+    "filesystem.writeBinaryFile",
+    "filesystem.createDirectory",
     "filesystem.getStats"
   ],
   "modes": {

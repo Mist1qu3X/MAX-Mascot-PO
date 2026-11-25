@@ -49,10 +49,30 @@ export function clampProgressSeconds(value: unknown): number {
   return Math.min(Math.max(stepped, PROGRESS_FILL.min), PROGRESS_FILL.max)
 }
 
+/**
+ * Откуда берём картинку. `webcam` — любая камера, которую видит система
+ * (веб-камера, карта захвата, виртуальная камера). `canon` — зеркалка Canon
+ * напрямую по USB через помощника canon-bridge.exe: превью из Live View,
+ * а на съёмке камера сама наводит резкость и делает настоящий снимок.
+ */
+export type CameraSource = 'webcam' | 'canon'
+
+/** Поворот кадра по часовой стрелке — если камера стоит в корпусе боком. */
+export const ROTATIONS = [0, 90, 180, 270] as const
+export type Rotation = (typeof ROTATIONS)[number]
+
+export function clampRotation(value: unknown): Rotation {
+  return ROTATIONS.includes(value as Rotation) ? (value as Rotation) : 0
+}
+
 export type Settings = {
   format: Format
   language: Language
   cameraZoom: number
+  cameraSource: CameraSource
+  cameraRotation: Rotation
+  /** Складывать кадры в папку shots рядом с программой — посмотреть, что ушло в обработку. */
+  saveShots: boolean
   /** За сколько секунд шкала загрузки доходит до 100% (см. PROGRESS_FILL). */
   progressSeconds: number
   /** Выбранная камера: id от браузера и имя устройства — на случай, если id сменится. */
@@ -75,6 +95,9 @@ export function readSettings(): Settings | null {
       format: parsed.format,
       language: parsed.language ?? 'ru',
       cameraZoom: clampZoom(parsed.cameraZoom),
+      cameraSource: parsed.cameraSource === 'canon' ? 'canon' : 'webcam',
+      cameraRotation: clampRotation(parsed.cameraRotation),
+      saveShots: parsed.saveShots === true,
       progressSeconds: clampProgressSeconds(parsed.progressSeconds),
       cameraId: typeof parsed.cameraId === 'string' ? parsed.cameraId : undefined,
       cameraLabel: typeof parsed.cameraLabel === 'string' ? parsed.cameraLabel : undefined,
@@ -114,6 +137,9 @@ export function loadSettings(): Settings | null {
     format,
     language,
     cameraZoom: saved?.cameraZoom ?? CAMERA_ZOOM.initial,
+    cameraSource: saved?.cameraSource ?? 'webcam',
+    cameraRotation: saved?.cameraRotation ?? 0,
+    saveShots: saved?.saveShots ?? false,
     progressSeconds: saved?.progressSeconds ?? PROGRESS_FILL.initial,
     cameraId: saved?.cameraId,
     cameraLabel: saved?.cameraLabel,

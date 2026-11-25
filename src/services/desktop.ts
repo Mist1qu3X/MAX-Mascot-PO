@@ -17,12 +17,28 @@ type Filesystem = {
   readFile: (path: string) => Promise<string>
   /** Перезаписать файл целиком. Разрешено в nativeAllowList. */
   writeFile?: (path: string, data: string) => Promise<void>
+  writeBinaryFile?: (path: string, data: ArrayBuffer) => Promise<void>
+  createDirectory?: (path: string) => Promise<void>
 }
 
 type Neutralino = {
   init: () => void
   filesystem: Filesystem
   app: { exit: (code?: number) => Promise<void> }
+  /** Запуск соседней программы — так стартует помощник камеры Canon. */
+  os?: { spawnProcess: (command: string, cwd?: string) => Promise<{ id: number; pid: number }> }
+}
+
+type Globals = { NL_PATH?: string; NL_PID?: number }
+
+/** Папка, где лежит приложение. В браузере — пустая строка. */
+export function appPath(): string {
+  return (window as unknown as Globals).NL_PATH ?? ''
+}
+
+/** Номер процесса приложения: по нему помощник камеры понимает, что панель закрыта. */
+export function appPid(): number {
+  return (window as unknown as Globals).NL_PID ?? 0
 }
 
 /** Сколько ждём готовности, прежде чем считать, что нативной части нет. */

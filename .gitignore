@@ -4,6 +4,7 @@
 /web/
 /bin/
 /dist-neu/
+/canon-bridge/bin/
 *.tsbuildinfo
 *.log
 

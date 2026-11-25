@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
-import { clampZoom, type Format } from '../format'
+import { clampZoom, type Format, type Rotation } from '../format'
 
 export type CameraStatus =
   | 'idle' // ещё не запрашивали
@@ -97,6 +97,74 @@ export function cropTransform(mirrored: boolean, zoom: number): string {
   const scale = `scale(${(1 / keep).toFixed(4)})`
   const move = `translate(${shiftX.toFixed(4)}%, ${shiftY.toFixed(4)}%)`
   return `${mirrored ? 'scaleX(-1) ' : ''}${scale} ${move}`
+}
+
+/**
+ * Готовый снимок из кадра камеры: поворот, обрезка под окно превью,
+ * приближение, зеркало — теми же числами, что у живой картинки. Источник —
+ * `<video>` веб-камеры или фотография с зеркалки, размер `sw × sh`.
+ *
+ * Порядок тот же, что видит человек: сначала кадр поворачивается (камера
+ * может стоять в корпусе боком), потом кадрируется как object-fit: cover,
+ * потом приближается, и в самом конце зеркалится.
+ */
+export function renderShot(
+  source: CanvasImageSource,
+  sw: number,
+  sh: number,
+  aspect: number,
+  mirrored: boolean,
+  zoom: number,
+  rotation: Rotation = 0,
+): string | null {
+  if (!sw || !sh) return null
+
+  // Размер кадра после поворота — в нём считается вся обрезка.
+  const turned = rotation === 90 || rotation === 270
+  const vw = turned ? sh : sw
+  const vh = turned ? sw : sh
+
+  // Сперва как object-fit: cover — приводим к нужному соотношению сторон.
+  const fitW = Math.min(vw, vh * aspect)
+  const fitH = Math.min(vh, vw / aspect)
+  const fitX = (vw - fitW) / 2
+  const fitY = (vh - fitH) / 2
+
+  // Затем приближаем по настройке масштаба. Соотношение сторон при этом
+  // сохраняется: режем обе оси в одну долю.
+  const { keep, left, top } = cropFor(zoom)
+  const srcW = fitW * keep
+  const srcH = fitH * keep
+  const srcX = fitX + fitW * left
+  const srcY = fitY + fitH * top
+
+  const scale = Math.min(1, MAX_SIDE / Math.max(srcW, srcH))
+  const canvas = document.createElement('canvas')
+  canvas.width = Math.round(srcW * scale)
+  canvas.height = Math.round(srcH * scale)
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return null
+
+  if (mirrored) {
+    ctx.translate(canvas.width, 0)
+    ctx.scale(-1, 1)
+  }
+  // Дальше координаты — повёрнутый кадр vw × vh, из которого видна область src.
+  ctx.scale(canvas.width / srcW, canvas.height / srcH)
+  ctx.translate(-srcX, -srcY)
+  // И в него кладём исходник: поворот по часовой, как rotate() в CSS.
+  if (rotation === 90) {
+    ctx.translate(vw, 0)
+    ctx.rotate(Math.PI / 2)
+  } else if (rotation === 180) {
+    ctx.translate(vw, vh)
+    ctx.rotate(Math.PI)
+  } else if (rotation === 270) {
+    ctx.translate(0, vh)
+    ctx.rotate(-Math.PI / 2)
+  }
+  ctx.drawImage(source, 0, 0, sw, sh)
+  return canvas.toDataURL('image/jpeg', 0.9)
 }
 
 /**
@@ -210,6 +278,9 @@ export function useCamera({
 
   useEffect(() => {
     if (autoStart) void start()
+    // Поток не просили (снимает зеркалка) — список камер всё равно нужен,
+    // чтобы на экране настройки можно было вернуться к веб-камере.
+    else void listCameras().then(setDevices)
     return () => {
       runRef.current++
       stop()
@@ -237,38 +308,10 @@ export function useCamera({
    * что человек видел на экране.
    */
   const capture = useCallback(
-    (aspect: number, mirrored: boolean, zoom: number): string | null => {
+    (aspect: number, mirrored: boolean, zoom: number, rotation: Rotation = 0): string | null => {
       const video = videoRef.current
-      if (!video || !video.videoWidth || !video.videoHeight) return null
-
-      const { videoWidth: vw, videoHeight: vh } = video
-      // Сперва как object-fit: cover — приводим к нужному соотношению сторон.
-      const fitW = Math.min(vw, vh * aspect)
-      const fitH = Math.min(vh, vw / aspect)
-      const fitX = (vw - fitW) / 2
-      const fitY = (vh - fitH) / 2
-
-      // Затем приближаем по настройке масштаба. Соотношение сторон при этом
-      // сохраняется: режем обе оси в одну долю.
-      const { keep, left, top } = cropFor(zoom)
-      const srcW = fitW * keep
-      const srcH = fitH * keep
-      const srcX = fitX + fitW * left
-      const srcY = fitY + fitH * top
-
-      const scale = Math.min(1, MAX_SIDE / Math.max(srcW, srcH))
-      const canvas = document.createElement('canvas')
-      canvas.width = Math.round(srcW * scale)
-      canvas.height = Math.round(srcH * scale)
-      const ctx = canvas.getContext('2d')
-      if (!ctx) return null
-
-      if (mirrored) {
-        ctx.translate(canvas.width, 0)
-        ctx.scale(-1, 1)
-      }
-      ctx.drawImage(video, srcX, srcY, srcW, srcH, 0, 0, canvas.width, canvas.height)
-      return canvas.toDataURL('image/jpeg', 0.9)
+      if (!video) return null
+      return renderShot(video, video.videoWidth, video.videoHeight, aspect, mirrored, zoom, rotation)
     },
     [],
   )

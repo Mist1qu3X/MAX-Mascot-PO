@@ -291,3 +291,36 @@
   color: #fff;
   cursor: pointer;
 }
+
+/* Пробный снимок зеркалки — поверх живой картинки, в том же окне. */
+.camProbe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Галочка с пояснением: текст переносится, квадратик остаётся у первой строки. */
+.check {
+  display: flex;
+  align-items: flex-start;
+  gap: calc(1.4 * var(--s));
+  font-size: calc(2 * var(--s));
+  line-height: 1.4;
+  color: rgb(255 255 255 / 0.7);
+  cursor: pointer;
+}
+
+.check input {
+  flex: none;
+  width: calc(2.8 * var(--s));
+  height: calc(2.8 * var(--s));
+  margin: 0;
+  accent-color: #8f02ff;
+}
+
+.secondary:disabled {
+  opacity: 0.45;
+  cursor: default;
+}

@@ -6,6 +6,7 @@ import { pendingCount } from '../../services/stats'
 import { pendingGenerations } from '../../services/generations'
 import { desktop } from '../../services/desktop'
 import styles from './DiagScreen.module.css'
+import { canonConnect, canonStatus, ensureBridge } from '../../services/canon'
 
 /**
  * Служебный экран проверки связи. Открывается по `#diag` в адресе.
@@ -95,8 +96,10 @@ const CHECKS: Check[] = [
     hint: 'Съёмка не заработает: нет устройства или не выдано разрешение. '
       + 'Камеру можно выбрать на экране настройки — там же кнопка «Обновить список камер»',
     run: async () => {
-      // Та камера, что выбрана в настройках; не нашлась — любая.
       const saved = readSettings()
+      if (saved?.cameraSource === 'canon') return canonCheck()
+
+      // Та камера, что выбрана в настройках; не нашлась — любая.
       const cameras = (await navigator.mediaDevices.enumerateDevices()).filter((d) => d.kind === 'videoinput')
       const stream = await navigator.mediaDevices.getUserMedia({
         video: saved?.cameraId ? { deviceId: { ideal: saved.cameraId } } : true,
@@ -108,6 +111,30 @@ const CHECKS: Check[] = [
     },
   },
 ]
+
+/** Зеркалка Canon: спрашиваем помощника, а не браузер — веб-камерой она не видна. */
+async function canonCheck(): Promise<string> {
+  if (!(await ensureBridge())) throw new Error('помощник камеры canon-bridge.exe не запущен')
+  await canonConnect()
+
+  // Подключение занимает секунду-другую: даём ему время, прежде чем ругаться.
+  let status = await canonStatus()
+  for (let i = 0; i < 12 && status && (status.state === 'idle' || status.state === 'connecting'); i++) {
+    await new Promise((resolve) => window.setTimeout(resolve, 500))
+    status = await canonStatus()
+  }
+  if (!status) throw new Error('помощник камеры canon-bridge.exe не отвечает')
+  if (status.state !== 'ready') throw new Error(status.message || status.state)
+
+  const parts = [`${status.camera}, напрямую по USB${status.backend === 'fake' ? ' (имитация)' : ''}`]
+  if (status.frameWidth) parts.push(`превью ${status.frameWidth} × ${status.frameHeight}`)
+  if (status.lastCaptureWidth) {
+    parts.push(`последний снимок ${status.lastCaptureWidth} × ${status.lastCaptureHeight} `
+      + `за ${(status.lastCaptureMs / 1000).toFixed(1)} с${status.lastCaptureFocused ? '' : ', без наводки резкости'}`)
+  }
+  if (status.lastCaptureError) parts.push(`ошибка съёмки: ${status.lastCaptureError}`)
+  return parts.join('; ')
+}
 
 export function DiagScreen({ onClose }: { onClose?: () => void }) {
   const [results, setResults] = useState<Record<string, Result>>({})

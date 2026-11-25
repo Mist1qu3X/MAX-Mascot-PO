@@ -3,7 +3,7 @@ import { useTexts } from '../../i18n'
 import styles from './CameraLandscape.module.css'
 
 /** В горизонтальном макете стрелки к камере нет — объектив прямо над экраном. */
-export function CameraLandscape({ videoRef, mirrored, videoTransform, live, shot, message, count }: CameraViewProps) {
+export function CameraLandscape({ renderFeed, shot, message, count }: CameraViewProps) {
   const t = useTexts()
 
   return (
@@ -14,16 +14,7 @@ export function CameraLandscape({ videoRef, mirrored, videoTransform, live, shot
 
       <div className={styles.preview}>
         <div className={styles.viewport}>
-          <video
-            ref={videoRef}
-            className={styles.video}
-            style={{ transform: videoTransform }}
-            data-mirrored={mirrored || undefined}
-            data-visible={live ? '' : undefined}
-            autoPlay
-            playsInline
-            muted
-          />
+          {renderFeed(styles.video)}
           {shot && <img className={styles.shot} src={shot} alt="Снятый кадр" />}
           {message && <p className={styles.message}>{message}</p>}
         </div>

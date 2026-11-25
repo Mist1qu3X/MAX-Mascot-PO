@@ -12,7 +12,9 @@ import { SetupScreen } from './screens/Setup/SetupScreen'
 import { WelcomeScreen } from './screens/Welcome/WelcomeScreen'
 import { DiagScreen } from './screens/Diag/DiagScreen'
 import { LanguageProvider, TEXTS } from './i18n'
-import { quit } from './services/desktop'
+import { canonConnect, canonDisconnect, canonShutdown, ensureBridge } from './services/canon'
+import { desktop, quit } from './services/desktop'
+import { saveShot } from './services/shots'
 import { startSession, startStats, track } from './services/stats'
 import { beginGeneration, cancelGeneration, endGeneration, startGenerationStats } from './services/generations'
 
@@ -60,6 +62,15 @@ export function App() {
     if (settings) applyFormat(settings.format)
   }, [settings])
 
+  // Зеркалку занимаем сразу, как только она выбрана, а не на первом
+  // посетителе: подключение занимает секунды. Выбрали веб-камеру — отпускаем,
+  // иначе EOS Webcam Utility ту же камеру не получит.
+  const cameraSource = settings?.cameraSource
+  useEffect(() => {
+    if (cameraSource === 'canon') void ensureBridge().then((up) => (up ? canonConnect() : undefined))
+    else if (cameraSource === 'webcam') void canonDisconnect()
+  }, [cameraSource])
+
   // Без генерации #result сразу показывает готовый образец: иначе экран
   // результата открывался бы пустым — ни маскота, ни QR.
   const startGeneration = generation.start
@@ -82,13 +93,21 @@ export function App() {
   // Долгое удержание в левом верхнем углу — на панели адресной строки нет.
   useSetupGesture(openSetup)
 
-  // А пять быстрых касаний в правом верхнем — выход: окно без рамки и
-  // поверх всего, закрыть его иначе нечем.
-  useQuitGesture(useCallback(() => {
-    track('app', 'quit')
-    cancelGeneration()
-    void quit()
-  }, []))
+  // Выход. Помощника камеры закрываем первым: он должен отпустить
+  // зеркалку, иначе она останется «занята» до перетыкания кабеля.
+  const quitApp = useCallback(() => {
+    void desktop.then((native) => {
+      // В браузере закрывать нечего, и помощника, запущенного руками, не трогаем.
+      if (!native) return
+      track('app', 'quit')
+      cancelGeneration()
+      return canonShutdown().then(quit)
+    })
+  }, [])
+
+  // Пять быстрых касаний в правом верхнем углу — окно без рамки и поверх
+  // всего, закрыть его иначе нечем. Вторая дорога — кнопка на экране настройки.
+  useQuitGesture(quitApp)
 
   // …а в браузере хватает #setup.
   useEffect(() => {
@@ -120,6 +139,7 @@ export function App() {
     (shot: string) => {
       setPhoto(shot)
       track('photo', 'captured')
+      if (settings?.saveShots) void saveShot(shot)
 
       // Генерацию запускаем сразу, не дожидаясь смены экрана: загрузка кадра
       // на сервис идёт параллельно с тем, как человек смотрит на свой снимок.
@@ -141,7 +161,7 @@ export function App() {
 
       timers.current.push(window.setTimeout(() => setScreen('loading'), SHOT_HOLD_MS))
     },
-    [generation, goToWelcome, settings?.model, settings?.progressSeconds],
+    [generation, goToWelcome, settings?.model, settings?.progressSeconds, settings?.saveShots],
   )
 
   const handleRestart = useCallback(() => {
@@ -156,6 +176,8 @@ export function App() {
     setSettings(next)
     track('setup', `${next.format}:${next.language}`, {
       cameraZoom: next.cameraZoom,
+      cameraSource: next.cameraSource,
+      cameraRotation: next.cameraRotation,
       model: next.model,
       progressSeconds: next.progressSeconds,
     })
@@ -182,7 +204,14 @@ export function App() {
       <SetupScreen
         initial={readSettings() ?? undefined}
         onDone={applySettings}
-        onDiagnostics={() => setDiag(true)}
+        onDiagnostics={(draft) => {
+          // Выбор на экране настройки сохраняем: проверка читает сохранённое,
+          // и сам экран после неё открывается заново — без этого он молча
+          // возвращался к прошлой камере.
+          saveSettings(draft)
+          setDiag(true)
+        }}
+        onQuit={quitApp}
       />
     )
   }
@@ -201,9 +230,13 @@ export function App() {
             <CameraScreen
               format={settings.format}
               zoom={settings.cameraZoom}
+              rotation={settings.cameraRotation}
+              source={settings.cameraSource}
               cameraId={settings.cameraId}
               cameraLabel={settings.cameraLabel}
+              saveOriginals={settings.saveShots}
               onCapture={handleCapture}
+              onFail={goToWelcome}
             />
           </div>
         )}
