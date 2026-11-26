@@ -28,11 +28,19 @@ const INSET = 1
  * надёжнее одиночного пикселя: случайная светлая крапина не собьёт решение.
  */
 const PROBE = 32
+/**
+ * Дольше картинку для проверки не ждём. Своя копия (blob:) открывается
+ * мгновенно, а чужую ссылку браузер грузит без всякого предела: если хост
+ * результата принял запрос и замолчал, проверка ждала бы вечно, и шкала
+ * стояла на 99% — так и было 25.11 на сбое kie.ai.
+ */
+const LOAD_TIMEOUT_MS = 5000
 
 /**
  * Яркость четырёх углов. `null` — прочитать не вышло: картинка чужая и без
- * CORS-заголовков, canvas от такой «пачкается» и пиксели читать не даёт.
- * Тогда чинить не беремся: лучше показать как есть, чем сорвать результат.
+ * CORS-заголовков, canvas от такой «пачкается» и пиксели читать не даёт,
+ * или она не загрузилась вовремя. Тогда чинить не беремся: лучше показать
+ * как есть, чем сорвать результат.
  */
 async function cornerLuma(src: string): Promise<number[] | null> {
   const image = new Image()
@@ -40,11 +48,22 @@ async function cornerLuma(src: string): Promise<number[] | null> {
   if (!src.startsWith('blob:')) image.crossOrigin = 'anonymous'
 
   const loaded = await new Promise<boolean>((resolve) => {
-    image.onload = () => resolve(true)
-    image.onerror = () => resolve(false)
+    const timer = window.setTimeout(() => resolve(false), LOAD_TIMEOUT_MS)
+    image.onload = () => {
+      window.clearTimeout(timer)
+      resolve(true)
+    }
+    image.onerror = () => {
+      window.clearTimeout(timer)
+      resolve(false)
+    }
     image.src = src
   })
-  if (!loaded || !image.naturalWidth) return null
+  if (!loaded || !image.naturalWidth) {
+    // Не дождались — обрываем загрузку, чтобы не висела фоном.
+    image.removeAttribute('src')
+    return null
+  }
 
   const canvas = document.createElement('canvas')
   canvas.width = PROBE

@@ -42,6 +42,31 @@ const SMOOTH_MS = 220
  */
 const MIN_STEP = 0.001
 
+/**
+ * Ждём шаг, но не дольше, чем живёт сигнал. Запросы в сеть обрываются им и
+ * сами, но не всё в цепочке — запрос: загрузку картинки отменить нечем. На
+ * таком шаге сторож DEADLINE_MS срабатывал вхолостую, и 25.11 панель простояла
+ * на 99% двадцать минут при пределе в три. Теперь предел держится, что бы ни
+ * повисло внутри.
+ */
+function untilAborted<T>(step: Promise<T>, signal: AbortSignal): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const onAbort = () => reject(new DOMException('Aborted', 'AbortError'))
+    if (signal.aborted) return onAbort()
+    signal.addEventListener('abort', onAbort, { once: true })
+    step.then(
+      (value) => {
+        signal.removeEventListener('abort', onAbort)
+        resolve(value)
+      },
+      (error) => {
+        signal.removeEventListener('abort', onAbort)
+        reject(error)
+      },
+    )
+  })
+}
+
 export function useGeneration() {
   const [state, setState] = useState<GenerationState>('idle')
   const [progress, setProgress] = useState(0)
@@ -129,7 +154,7 @@ export function useGeneration() {
           return
         }
 
-        const { blobUrl, remoteUrl } = await generateMascot(photoDataUrl, {
+        const { blobUrl, remoteUrl } = await untilAborted(generateMascot(photoDataUrl, {
           signal: controller.signal,
           model,
           onUpload: (imageUrl) => {
@@ -138,7 +163,7 @@ export function useGeneration() {
               if (result === 'reject') controller.abort()
             })
           },
-        })
+        }), controller.signal)
 
         // Сюда попадаем, если проверка не успела до конца отрисовки.
         if (rejected()) {
@@ -151,7 +176,10 @@ export function useGeneration() {
         }
         // Фон бывает белым примерно на каждом третьем кадре. Проверка углов
         // бесплатна, починка запускается только когда фон действительно подвёл.
-        const mascot = await ensureDarkBackdrop({ blobUrl, remoteUrl }, { signal: controller.signal })
+        const mascot = await untilAborted(
+          ensureDarkBackdrop({ blobUrl, remoteUrl }, { signal: controller.signal }),
+          controller.signal,
+        )
         if (controller.signal.aborted) {
           URL.revokeObjectURL(mascot.blobUrl)
           return
@@ -161,7 +189,7 @@ export function useGeneration() {
         // первого кадра. Ждать почти нечего: сервер отвечает сразу, а
         // картинку докачивает фоном. На случай, если он не ответит вовсе,
         // у запроса свой таймаут — экран результата он не задержит.
-        const sticker = await stickerLink(mascot.remoteUrl, controller.signal)
+        const sticker = await untilAborted(stickerLink(mascot.remoteUrl, controller.signal), controller.signal)
         if (controller.signal.aborted) {
           URL.revokeObjectURL(mascot.blobUrl)
           return
