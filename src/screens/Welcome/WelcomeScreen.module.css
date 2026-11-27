@@ -22,9 +22,30 @@
   overflow: hidden;
 }
 
+/* Логотипы партнёров: по полям текста, крайние прижаты к краям,
+   по вертикали по центру строки. */
+.partners {
+  position: absolute;
+  top: calc(192 * var(--u));
+  left: var(--pad-x);
+  right: var(--pad-x);
+  height: calc(160 * var(--u));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  pointer-events: none;
+}
+
+.partners img {
+  display: block;
+  width: calc(480 * var(--u));
+  height: auto;
+}
+
+/* Под строкой логотипов текст опущен на 240 против других экранов. */
 .copy {
   position: relative;
-  padding: calc(var(--y-top) * var(--u)) var(--pad-x) 0;
+  padding: calc((var(--y-top) + 240) * var(--u)) var(--pad-x) 0;
 }
 
 

@@ -1,9 +1,19 @@
 import cardsSrc from '../../assets/mascot-cards.png'
+import dobroSrc from '../../assets/partners/dobro.svg'
+import myvmesteSrc from '../../assets/partners/myvmeste.svg'
+import rosmolodezhSrc from '../../assets/partners/rosmolodezh.svg'
 import type { Format } from '../../format'
 import { WelcomeLandscape } from './WelcomeLandscape'
 import { useTexts } from '../../i18n'
 import styles from './WelcomeScreen.module.css'
 import { outsideCorners } from '../../corners'
+
+/** Партнёры форума — строка над заголовком, только в вертикали. */
+const PARTNERS = [
+  { src: myvmesteSrc, name: '#МЫВМЕСТЕ' },
+  { src: rosmolodezhSrc, name: 'Росмолодёжь' },
+  { src: dobroSrc, name: 'Добро.рф' },
+]
 
 type WelcomeScreenProps = {
   format: Format
@@ -37,6 +47,12 @@ export function WelcomeScreen({ format, onStart }: WelcomeScreenProps) {
       }}
     >
       <div className={styles.hero}>
+        <div className={styles.partners}>
+          {PARTNERS.map((partner) => (
+            <img key={partner.name} src={partner.src} alt={partner.name} draggable={false} />
+          ))}
+        </div>
+
         <div className={styles.copy}>
           <h1 className={styles.title}>
             {t.welcomeTitle.map((line) => <span className={styles.line} key={line}>{line}</span>)}
